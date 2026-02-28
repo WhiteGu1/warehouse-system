@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine
 import models
-from routers import auth, products
+from routers import auth, products, stock, customers
 
 # 自动创建数据库表
 models.Base.metadata.create_all(bind=engine)
@@ -21,6 +21,8 @@ app.add_middleware(
 # 注册路由
 app.include_router(auth.router, prefix="/api/auth", tags=["登录"])
 app.include_router(products.router, prefix="/api/products", tags=["商品管理"])
+app.include_router(stock.router, prefix="/api/stock", tags=["入库管理"])
+app.include_router(customers.router, prefix="/api/customers", tags=["客户管理"])
 
 @app.get("/")
 def root():

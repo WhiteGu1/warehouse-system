@@ -34,9 +34,9 @@ const router = createRouter({
                     component: () => import('../views/Orders.vue')
                 },
                 {
-path: 'customers',
-name: 'customers',
-component: () => import('../views/Customers.vue')
+                    path: 'customers',
+                    name: 'customers',
+                    component: () => import('../views/Customers.vue')
                 }
             ]
         },
@@ -47,13 +47,10 @@ component: () => import('../views/Customers.vue')
     ]
 })
 
-// 路由守卫：未登录跳转到登录页
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
     const token = localStorage.getItem('token')
     if (to.path !== '/login' && !token) {
-        next('/login')
-    } else {
-        next()
+        return '/login'
     }
 })
 

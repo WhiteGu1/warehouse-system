@@ -27,7 +27,7 @@
           <el-icon><List /></el-icon>
           <span>订单管理</span>
         </el-menu-item>
-        <el-menu-item index="/supermarkets">
+        <el-menu-item index="/customers">
           <el-icon><Shop /></el-icon>
           <span>客户管理</span>
         </el-menu-item>
