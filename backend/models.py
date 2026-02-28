@@ -20,7 +20,7 @@ class Supermarket(Base):
     address = Column(String(200))
     username = Column(String(50), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
-    is_active = Column( SmallInteger, default=1)
+    is_active = Column(SmallInteger, default=1)
     created_at = Column(DateTime, default=func.now())
 
 class Category(Base):
@@ -41,7 +41,7 @@ class Product(Base):
     stock = Column(Integer, default=0)
     image = Column(String(255))
     remark = Column(TEXT)
-    is_active = Column( SmallInteger, default=1)
+    is_active = Column(SmallInteger, default=1)
     created_at = Column(DateTime, default=func.now())
     category = relationship("Category")
 
@@ -62,7 +62,7 @@ class Order(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     order_no = Column(String(50), unique=True, nullable=False)
     supermarket_id = Column(Integer, ForeignKey("supermarkets.id"), nullable=False)
-    status = Column( SmallInteger, default=1)
+    status = Column(SmallInteger, default=1)
     total_amount = Column(Numeric(10, 2))
     tracking_number = Column(String(100))
     logistics_company = Column(String(100))
@@ -87,8 +87,8 @@ class OrderLog(Base):
     __tablename__ = "order_logs"
     id = Column(Integer, primary_key=True, autoincrement=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
-    status = Column( SmallInteger)
-    operator_type = Column( SmallInteger)
+    status = Column(SmallInteger)
+    operator_type = Column(SmallInteger)
     operator_id = Column(Integer)
     operator_name = Column(String(50))
     remark = Column(TEXT)
@@ -105,3 +105,30 @@ class Payment(Base):
     admin_id = Column(Integer, ForeignKey("admins.id"))
     remark = Column(TEXT)
     created_at = Column(DateTime, default=func.now())
+
+class ImportBatch(Base):
+    __tablename__ = "import_batches"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    batch_name = Column(String(100))
+    total = Column(Integer, default=0)
+    success = Column(Integer, default=0)
+    failed = Column(Integer, default=0)
+    pending_price = Column(Integer, default=0)
+    created_at = Column(DateTime, default=func.now())
+
+class ImportFailed(Base):
+    __tablename__ = "import_failed"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    batch_id = Column(Integer, ForeignKey("import_batches.id"))
+    row_data = Column(String(500))
+    reason = Column(String(200))
+    created_at = Column(DateTime, default=func.now())
+
+class ImportPendingPrice(Base):
+    __tablename__ = "import_pending_price"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    batch_id = Column(Integer, ForeignKey("import_batches.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
+    confirmed = Column(SmallInteger, default=0)
+    created_at = Column(DateTime, default=func.now())
+    product = relationship("Product")
