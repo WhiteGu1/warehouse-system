@@ -29,6 +29,11 @@ const router = createRouter({
                     component: () => import('../views/StockIn.vue')
                 },
                 {
+                    path: 'stock-out',
+                    name: 'stock-out',
+                    component: () => import('../views/StockOut.vue')
+                },
+                {
                     path: 'orders',
                     name: 'orders',
                     component: () => import('../views/Orders.vue')
@@ -37,6 +42,21 @@ const router = createRouter({
                     path: 'customers',
                     name: 'customers',
                     component: () => import('../views/Customers.vue')
+                },
+                {
+                    path: 'stats',
+                    name: 'stats',
+                    component: () => import('../views/Stats.vue')
+                },
+                {
+                    path: 'stats/flow',
+                    name: 'stats-flow',
+                    component: () => import('../views/StatsFlow.vue')
+                },
+                {
+                    path: 'stats/products',
+                    name: 'stats-products',
+                    component: () => import('../views/StatsProducts.vue')
                 },
                 {
                     path: 'import',

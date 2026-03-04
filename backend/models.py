@@ -22,6 +22,8 @@ class Supermarket(Base):
     password = Column(String(255), nullable=False)
     is_active = Column(SmallInteger, default=1)
     created_at = Column(DateTime, default=func.now())
+    tax_no = Column(String(50), nullable=True)
+    discount = Column(Numeric(4, 2), default=1.00)
 
 class Category(Base):
     __tablename__ = "categories"
@@ -40,6 +42,9 @@ class Product(Base):
     sell_price = Column(Numeric(10, 2))
     stock = Column(Integer, default=0)
     image = Column(String(255))
+    middle_pack = Column(Integer)
+    piece = Column(Integer)
+    item_no = Column(String(50))
     remark = Column(TEXT)
     is_active = Column(SmallInteger, default=1)
     created_at = Column(DateTime, default=func.now())
@@ -56,7 +61,8 @@ class StockIn(Base):
     remark = Column(TEXT)
     created_at = Column(DateTime, default=func.now())
     product = relationship("Product")
-
+    source = Column(String(30))
+    
 class Order(Base):
     __tablename__ = "orders"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -82,7 +88,8 @@ class OrderItem(Base):
     total_price = Column(Numeric(10, 2))
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
-
+    returned_quantity = Column(Integer, default=0)
+    
 class OrderLog(Base):
     __tablename__ = "order_logs"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -132,3 +139,20 @@ class ImportPendingPrice(Base):
     confirmed = Column(SmallInteger, default=0)
     created_at = Column(DateTime, default=func.now())
     product = relationship("Product")
+
+class StockOut(Base):
+    __tablename__ = "stock_out"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+    product_name = Column(String(100))
+    product_barcode = Column(String(50))
+    product_spec = Column(String(100))
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True)
+    order_no = Column(String(50))
+    quantity = Column(Integer, nullable=False)
+    sell_price = Column(Numeric(10, 2))
+    reason = Column(String(200))
+    status = Column(String(20))
+    created_at = Column(DateTime, default=func.now())
+    product = relationship("Product")
+    order = relationship("Order")

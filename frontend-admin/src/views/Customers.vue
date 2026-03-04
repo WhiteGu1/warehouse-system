@@ -13,6 +13,13 @@
         <el-table-column prop="contact_person" label="联系人" width="100" />
         <el-table-column prop="phone" label="电话" width="130" />
         <el-table-column prop="address" label="地址" />
+        <el-table-column prop="tax_no" label="税号" width="160" />
+        <el-table-column label="折扣" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.discount < 1" type="warning">{{ (row.discount * 100).toFixed(0) }}折</el-tag>
+            <el-tag v-else type="success">无折扣</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="username" label="登录账号" width="120" />
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
@@ -36,24 +43,30 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑客户' : '新增客户'" width="500px">
       <el-form :model="form" label-width="90px">
-        <el-form-item label="客户名称">
-          <el-input v-model="form.name" />
+        <el-form-item label="客户名称"><el-input v-model="form.name" /></el-form-item>
+        <el-form-item label="联系人"><el-input v-model="form.contact_person" /></el-form-item>
+        <el-form-item label="电话"><el-input v-model="form.phone" /></el-form-item>
+        <el-form-item label="地址"><el-input v-model="form.address" /></el-form-item>
+        <el-form-item label="税号"><el-input v-model="form.tax_no" placeholder="纳税人识别号" /></el-form-item>
+        <el-form-item label="折扣">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <el-button
+              v-for="d in discountOptions" :key="d.value"
+              :type="form.discount === d.value ? 'primary' : ''"
+              size="small"
+              @click="form.discount = d.value"
+            >{{ d.label }}</el-button>
+            <el-input-number
+              v-model="form.discount"
+              :precision="2" :min="0.01" :max="1" :step="0.05"
+              style="width:120px"
+              placeholder="自定义"
+            />
+            <span style="color:#999;font-size:12px">（1=无折扣，0.9=九折）</span>
+          </div>
         </el-form-item>
-        <el-form-item label="联系人">
-          <el-input v-model="form.contact_person" />
-        </el-form-item>
-        <el-form-item label="电话">
-          <el-input v-model="form.phone" />
-        </el-form-item>
-        <el-form-item label="地址">
-          <el-input v-model="form.address" />
-        </el-form-item>
-        <el-form-item label="登录账号" v-if="!isEdit">
-          <el-input v-model="form.username" />
-        </el-form-item>
-        <el-form-item label="登录密码" v-if="!isEdit">
-          <el-input v-model="form.password" type="password" />
-        </el-form-item>
+        <el-form-item label="登录账号" v-if="!isEdit"><el-input v-model="form.username" /></el-form-item>
+        <el-form-item label="登录密码" v-if="!isEdit"><el-input v-model="form.password" type="password" /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -72,9 +85,18 @@ const customers = ref([])
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const editId = ref(null)
+
+const discountOptions = [
+  { label: '无折扣', value: 1.0 },
+  { label: '九五折', value: 0.95 },
+  { label: '九折', value: 0.9 },
+  { label: '八五折', value: 0.85 },
+  { label: '八折', value: 0.8 },
+]
+
 const form = ref({
-  name: '', contact_person: '', phone: '',
-  address: '', username: '', password: ''
+  name: '', contact_person: '', phone: '', address: '',
+  tax_no: '', discount: 1.0, username: '', password: ''
 })
 
 const loadCustomers = async () => {
@@ -83,29 +105,26 @@ const loadCustomers = async () => {
 
 const openAdd = () => {
   isEdit.value = false
-  form.value = { name: '', contact_person: '', phone: '', address: '', username: '', password: '' }
+  form.value = { name: '', contact_person: '', phone: '', address: '', tax_no: '', discount: 1.0, username: '', password: '' }
   dialogVisible.value = true
 }
 
 const openEdit = (row) => {
   isEdit.value = true
   editId.value = row.id
-  form.value = { name: row.name, contact_person: row.contact_person, phone: row.phone, address: row.address, is_active: row.is_active }
+  form.value = {
+    name: row.name, contact_person: row.contact_person, phone: row.phone,
+    address: row.address, tax_no: row.tax_no || '', discount: row.discount ?? 1.0, is_active: row.is_active
+  }
   dialogVisible.value = true
 }
 
 const saveCustomer = async () => {
-  if (!form.value.name) {
-    ElMessage.warning('请输入客户名称')
-    return
-  }
+  if (!form.value.name) { ElMessage.warning('请输入客户名称'); return }
   if (isEdit.value) {
     await request.put(`/customers/${editId.value}`, form.value)
   } else {
-    if (!form.value.username || !form.value.password) {
-      ElMessage.warning('请输入账号和密码')
-      return
-    }
+    if (!form.value.username || !form.value.password) { ElMessage.warning('请输入账号和密码'); return }
     await request.post('/customers/', form.value)
   }
   ElMessage.success('保存成功')
