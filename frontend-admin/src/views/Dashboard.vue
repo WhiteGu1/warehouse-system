@@ -61,7 +61,7 @@
         <el-table-column prop="order_no" label="订单号" width="180" />
         <el-table-column prop="supermarket_name" label="客户" width="150" />
         <el-table-column prop="total_amount" label="金额" width="100">
-          <template #default="{ row }">¥{{ row.total_amount }}</template>
+          <template #default="{ row }">${{ row.total_amount }}</template>
         </el-table-column>
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
@@ -83,7 +83,7 @@
         <el-table-column prop="order_no" label="订单号" width="180" />
         <el-table-column prop="supermarket_name" label="客户" width="150" />
         <el-table-column prop="total_amount" label="金额" width="100">
-          <template #default="{ row }">¥{{ row.total_amount }}</template>
+          <template #default="{ row }">${{ row.total_amount }}</template>
         </el-table-column>
         <el-table-column prop="created_at" label="下单时间" />
         <el-table-column label="操作" width="120">
@@ -103,7 +103,7 @@
         <el-table-column prop="order_no" label="订单号" width="180" />
         <el-table-column prop="supermarket_name" label="客户" width="150" />
         <el-table-column prop="total_amount" label="金额" width="100">
-          <template #default="{ row }">¥{{ row.total_amount }}</template>
+          <template #default="{ row }">${{ row.total_amount }}</template>
         </el-table-column>
         <el-table-column label="状态" width="120">
           <template #default="{ row }">

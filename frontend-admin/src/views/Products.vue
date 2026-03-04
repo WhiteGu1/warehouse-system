@@ -50,8 +50,9 @@
             <div style="font-size:12px;color:#666">规格：{{ p.spec || '-' }}</div>
             <div style="font-size:12px;color:#666">货号：{{ p.item_no || p.barcode || '-' }}</div>
             <div style="font-size:12px;color:#666">库存：{{ p.stock }}</div>
-            <div style="font-size:12px;color:#e6a23c">进价：¥{{ p.cost_price ?? '-' }}</div>
-            <div style="font-size:12px;color:#67c23a">售价：¥{{ p.sell_price ?? '-' }}</div>
+            <div style="font-size:12px;color:#e6a23c">进价：${{ p.cost_price ?? '-' }}</div>
+            <div style="font-size:12px;color:#67c23a">售价：${{ p.sell_price ?? '-' }}</div>
+            <div v-if="p.special_price" style="font-size:12px;color:#f56c6c;font-weight:bold">特价：${{ p.special_price }}</div>
           </div>
           <div style="padding:0 10px 10px">
             <el-button size="small" type="success" style="width:100%" @click.stop="openStockIn(p)">商品入库</el-button>
@@ -82,8 +83,12 @@
             <el-descriptions-item label="规格">{{ detailProduct.spec || '-' }}</el-descriptions-item>
             <el-descriptions-item label="每包数量">{{ detailProduct.middle_pack ?? '-' }}</el-descriptions-item>
             <el-descriptions-item label="每件数量">{{ detailProduct.piece ?? '-' }}</el-descriptions-item>
-            <el-descriptions-item label="进价">¥{{ detailProduct.cost_price ?? '-' }}</el-descriptions-item>
-            <el-descriptions-item label="售价">¥{{ detailProduct.sell_price ?? '-' }}</el-descriptions-item>
+            <el-descriptions-item label="进价">${{ detailProduct.cost_price ?? '-' }}</el-descriptions-item>
+            <el-descriptions-item label="售价">${{ detailProduct.sell_price ?? '-' }}</el-descriptions-item>
+            <el-descriptions-item label="特价">
+              <span v-if="detailProduct.special_price" style="color:#f56c6c;font-weight:bold">${{ detailProduct.special_price }}</span>
+              <span v-else style="color:#aaa">无</span>
+            </el-descriptions-item>
             <el-descriptions-item label="库存">{{ detailProduct.stock }}</el-descriptions-item>
             <el-descriptions-item label="备注">{{ detailProduct.remark || '-' }}</el-descriptions-item>
           </el-descriptions>
@@ -147,6 +152,13 @@
               @change="val => { if(form.cost_price) form.sell_price = +(form.cost_price * (1 + (val||0) / 100)).toFixed(2) }"
             />
             <span style="color:#999;font-size:12px">%</span>
+          </div>
+        </el-form-item>
+        <el-form-item label="特价">
+          <div style="display:flex;gap:8px;align-items:center">
+            <el-input-number v-model="form.special_price" :precision="2" :min="0" style="width:150px" />
+            <el-button size="small" type="danger" @click="form.special_price = null" v-if="form.special_price">清除特价</el-button>
+            <span style="font-size:12px;color:#aaa">不填则无特价</span>
           </div>
         </el-form-item>
         <el-form-item v-if="!isEdit" label="初始库存"><el-input-number v-model="form.stock" :min="0" /></el-form-item>
@@ -261,7 +273,7 @@ const newCategoryName = ref('')
 const form = ref({
   barcode: '', item_no: '', name: '', category_id: null,
   spec: '', middle_pack: 1, piece: null,
-  cost_price: 0, sell_price: 0, stock: 0, remark: '', _margin: null
+  cost_price: 0, sell_price: 0, special_price: null, stock: 0, remark: '', _margin: null
 })
 
 const recalcSellPrice = (val) => {
@@ -292,6 +304,7 @@ const exportProducts = () => {
     '每件数量': p.piece ?? '',
     '进价': p.cost_price ?? '',
     '售价': p.sell_price ?? '',
+    '特价': p.special_price ?? '',
     '库存': p.stock,
     '备注': p.remark || ''
   }))
@@ -381,7 +394,11 @@ const submitStockIn = async () => {
 
 const openAdd = () => {
   isEdit.value = false
-  form.value = { barcode: '', item_no: '', name: '', category_id: null, spec: '', middle_pack: 1, piece: null, cost_price: 0, sell_price: 0, stock: 0, remark: '', _margin: null }
+  form.value = {
+    barcode: '', item_no: '', name: '', category_id: null,
+    spec: '', middle_pack: 1, piece: null,
+    cost_price: 0, sell_price: 0, special_price: null, stock: 0, remark: '', _margin: null
+  }
   dialogVisible.value = true
 }
 

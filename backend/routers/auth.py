@@ -40,3 +40,21 @@ def supermarket_login(request: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail="账号已被禁用")
     token = create_token({"sub": str(market.id), "role": "supermarket"})
     return {"token": token, "name": market.name, "role": "supermarket"}
+
+@router.post("/client-login")
+def client_login(data: LoginRequest, db: Session = Depends(get_db)):
+    customer = db.query(Supermarket).filter(Supermarket.username == data.username).first()
+    if not customer or not pwd_context.verify(data.password, customer.password):
+        raise HTTPException(status_code=401, detail="账号或密码错误")
+    if not customer.is_active:
+        raise HTTPException(status_code=403, detail="账号已被禁用")
+    token = create_token({"sub": str(customer.id), "role": "supermarket"})
+    return {
+        "access_token": token,
+        "user": {
+            "id": customer.id,
+            "name": customer.contact_person or customer.username,
+            "username": customer.username,
+            "discount": float(customer.discount) if customer.discount else 1.0
+        }
+    }

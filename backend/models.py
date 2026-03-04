@@ -45,6 +45,7 @@ class Product(Base):
     middle_pack = Column(Integer)
     piece = Column(Integer)
     item_no = Column(String(50))
+    special_price = Column(Numeric(10, 2), nullable=True)
     remark = Column(TEXT)
     is_active = Column(SmallInteger, default=1)
     created_at = Column(DateTime, default=func.now())

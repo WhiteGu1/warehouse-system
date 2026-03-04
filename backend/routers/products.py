@@ -21,6 +21,7 @@ class ProductCreate(BaseModel):
     unit: Optional[str] = None
     cost_price: Optional[float] = None
     sell_price: Optional[float] = None
+    special_price: Optional[float] = None
     stock: Optional[int] = 0
     remark: Optional[str] = None
     middle_pack: Optional[int] = 1
@@ -35,6 +36,7 @@ class ProductUpdate(BaseModel):
     unit: Optional[str] = None
     cost_price: Optional[float] = None
     sell_price: Optional[float] = None
+    special_price: Optional[float] = None
     remark: Optional[str] = None
     middle_pack: Optional[int] = None
     piece: Optional[int] = None
@@ -71,6 +73,7 @@ def get_products(
             "unit": p.unit,
             "cost_price": float(p.cost_price) if p.cost_price else None,
             "sell_price": float(p.sell_price) if p.sell_price else None,
+            "special_price": float(p.special_price) if p.special_price else None,
             "stock": p.stock,
             "image": p.image,
             "remark": p.remark,

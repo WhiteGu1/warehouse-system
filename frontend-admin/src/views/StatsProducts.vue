@@ -44,8 +44,8 @@
             <div style="font-size:12px;color:#666;margin-bottom:2px">规格：{{ p.spec || '-' }}</div>
             <div style="font-size:12px;color:#666;margin-bottom:2px">当前库存：{{ p.stock }}</div>
             <el-divider style="margin:6px 0" />
-            <div style="font-size:12px;color:#f56c6c">入库：{{ p.total_in_qty }}件 / ¥{{ p.total_in_cost }}</div>
-            <div style="font-size:12px;color:#67c23a">销售：{{ p.total_out_qty }}件 / ¥{{ p.total_out_sales }}</div>
+            <div style="font-size:12px;color:#f56c6c">入库：{{ p.total_in_qty }}件 / ${{ p.total_in_cost }}</div>
+            <div style="font-size:12px;color:#67c23a">销售：{{ p.total_out_qty }}件 / ${{ p.total_out_sales }}</div>
             <div :style="p.profit >= 0 ? 'font-size:12px;font-weight:bold;color:#409eff' : 'font-size:12px;font-weight:bold;color:#f56c6c'">
               {{ p.profit >= 0 ? '盈利' : '亏损' }}：¥{{ Math.abs(p.profit) }}
             </div>

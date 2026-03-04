@@ -72,13 +72,13 @@
         </div>
         <el-button @click="addItem" style="width:100%">+ 添加商品</el-button>
         <div style="text-align:right;margin-top:12px">
-          <span style="color:#999;font-size:13px">原价合计：¥{{ originalTotal }}</span>
+          <span style="color:#999;font-size:13px">原价合计：${{ originalTotal }}</span>
           <template v-if="currentDiscount < 1">
             <span style="margin:0 10px;color:#e6a23c;font-size:13px">折扣：-{{ ((1 - currentDiscount) * 100).toFixed(0) }}%</span>
-            <span style="font-weight:bold;font-size:16px;color:#f56c6c">折后合计：¥{{ totalAmount }}</span>
+            <span style="font-weight:bold;font-size:16px;color:#f56c6c">折后合计：${{ totalAmount }}</span>
           </template>
           <template v-else>
-            <span style="font-weight:bold;font-size:16px;margin-left:12px">合计：¥{{ totalAmount }}</span>
+            <span style="font-weight:bold;font-size:16px;margin-left:12px">合计：${{ totalAmount }}</span>
           </template>
         </div>
       </el-form>
@@ -125,7 +125,7 @@
             <el-tag :type="statusType(currentOrder.status)">{{ currentOrder.status_text }}</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="总金额">
-            <span>¥{{ currentOrder.total_amount }}</span>
+            <span>${{ currentOrder.total_amount }}</span>
             <el-tooltip v-if="getCustomerDiscount(currentOrder) < 1" placement="top">
               <template #content>客户折扣：-{{ ((1 - getCustomerDiscount(currentOrder)) * 100).toFixed(0) }}%</template>
               <el-tag type="warning" size="small" style="margin-left:8px;cursor:pointer">
@@ -232,14 +232,14 @@
               <td style="border:1px solid #ddd;padding:8px">{{ item.product_name }}</td>
               <td style="border:1px solid #ddd;padding:8px;color:#666">{{ item.product_barcode || '-' }}</td>
               <td style="border:1px solid #ddd;padding:8px;text-align:center">{{ item.quantity }}</td>
-              <td style="border:1px solid #ddd;padding:8px;text-align:right">¥{{ item.unit_price }}</td>
-              <td style="border:1px solid #ddd;padding:8px;text-align:right">¥{{ item.total_price }}</td>
+              <td style="border:1px solid #ddd;padding:8px;text-align:right">${{ item.unit_price }}</td>
+              <td style="border:1px solid #ddd;padding:8px;text-align:right">${{ item.total_price }}</td>
             </tr>
           </tbody>
           <tfoot>
             <tr v-if="invoiceData.discount && invoiceData.discount < 1">
               <td colspan="4" style="border:1px solid #ddd;padding:8px;text-align:right;color:#999">原价合计</td>
-              <td style="border:1px solid #ddd;padding:8px;text-align:right;color:#999">¥{{ invoiceData.original_total }}</td>
+              <td style="border:1px solid #ddd;padding:8px;text-align:right;color:#999">${{ invoiceData.original_total }}</td>
             </tr>
             <tr v-if="invoiceData.discount && invoiceData.discount < 1">
               <td colspan="4" style="border:1px solid #ddd;padding:8px;text-align:right;color:#e6a23c">折扣</td>
@@ -251,7 +251,7 @@
               <td colspan="4" style="border:1px solid #ddd;padding:8px;text-align:right">
                 {{ invoiceData.discount && invoiceData.discount < 1 ? '折后合计' : '合计' }}
               </td>
-              <td style="border:1px solid #ddd;padding:8px;text-align:right;font-size:15px">¥{{ invoiceData.total_amount }}</td>
+              <td style="border:1px solid #ddd;padding:8px;text-align:right;font-size:15px">${{ invoiceData.total_amount }}</td>
             </tr>
           </tfoot>
         </table>

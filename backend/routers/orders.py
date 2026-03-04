@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
@@ -81,6 +81,39 @@ def get_orders(status: Optional[int] = None, db: Session = Depends(get_db)):
             "id": o.id,
             "order_no": o.order_no,
             "supermarket_name": o.supermarket.name if o.supermarket else None,
+            "status": o.status,
+            "status_text": STATUS_MAP.get(o.status, "未知"),
+            "total_amount": float(o.total_amount) if o.total_amount else 0,
+            "tracking_number": o.tracking_number,
+            "logistics_company": o.logistics_company,
+            "remark": o.remark,
+            "created_at": o.created_at.strftime("%Y-%m-%d %H:%M:%S") if o.created_at else None
+        })
+    return result
+
+@router.get("/my")
+def get_my_orders(request: Request, db: Session = Depends(get_db)):
+    from jose import jwt
+    from jose.exceptions import JWTError
+    SECRET_KEY = "warehouse-secret-key-2024"
+    ALGORITHM = "HS256"
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="未登录")
+    token = auth.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        customer_id = int(payload.get("sub"))
+    except JWTError:
+        raise HTTPException(status_code=401, detail="token无效")
+    orders = db.query(Order).filter(
+        Order.supermarket_id == customer_id
+    ).order_by(Order.created_at.desc()).all()
+    result = []
+    for o in orders:
+        result.append({
+            "id": o.id,
+            "order_no": o.order_no,
             "status": o.status,
             "status_text": STATUS_MAP.get(o.status, "未知"),
             "total_amount": float(o.total_amount) if o.total_amount else 0,
@@ -349,3 +382,51 @@ def return_order(order_id: int, data: ReturnOrderRequest, db: Session = Depends(
     db.add(log)
     db.commit()
     return {"message": "退货登记成功，出库记录已标记仅退款"}
+
+@router.post("/{order_id}/client-cancel")
+def client_cancel_order(order_id: int, request: Request, db: Session = Depends(get_db)):
+    from jose import jwt
+    from jose.exceptions import JWTError
+    SECRET_KEY = "warehouse-secret-key-2024"
+    ALGORITHM = "HS256"
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="未登录")
+    token = auth.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        customer_id = int(payload.get("sub"))
+    except JWTError:
+        raise HTTPException(status_code=401, detail="token无效")
+    order = db.query(Order).filter(Order.id == order_id, Order.supermarket_id == customer_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    if order.status != 1:
+        raise HTTPException(status_code=400, detail="只有待确认订单可以取消")
+    order.status = 6
+    for item in order.items:
+        product = db.query(Product).filter(Product.id == item.product_id).first()
+        if product:
+            product.stock += item.quantity
+        stock_in = StockIn(
+            product_id=item.product_id,
+            quantity=item.quantity,
+            cost_price=item.unit_price,
+            total_amount=float(item.unit_price) * item.quantity,
+            source="cancel",
+            remark=f"客户取消，订单号：{order.order_no}"
+        )
+        db.add(stock_in)
+        stock_outs = db.query(StockOut).filter(
+            StockOut.order_id == order_id,
+            StockOut.product_id == item.product_id
+        ).all()
+        for so in stock_outs:
+            so.status = "已退回"
+    log = OrderLog(
+        order_id=order.id, status=6,
+        operator_type=2, operator_name="客户", remark="客户取消订单，库存已归还"
+    )
+    db.add(log)
+    db.commit()
+    return {"message": "订单已取消"}
