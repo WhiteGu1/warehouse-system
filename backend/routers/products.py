@@ -16,6 +16,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 class ProductCreate(BaseModel):
     barcode: Optional[str] = None
     name: str
+    name_es: Optional[str] = None
     category_id: Optional[int] = None
     spec: Optional[str] = None
     unit: Optional[str] = None
@@ -31,6 +32,7 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     barcode: Optional[str] = None
     name: Optional[str] = None
+    name_es: Optional[str] = None
     category_id: Optional[int] = None
     spec: Optional[str] = None
     unit: Optional[str] = None
@@ -67,8 +69,10 @@ def get_products(
             "id": p.id,
             "barcode": p.barcode,
             "name": p.name,
+            "name_es": p.name_es,
             "category_id": p.category_id,
             "category_name": p.category.name if p.category else None,
+            "category_name_es": p.category.name_es if p.category else None,
             "spec": p.spec,
             "unit": p.unit,
             "cost_price": float(p.cost_price) if p.cost_price else None,
@@ -190,4 +194,4 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
 @router.get("/categories")
 def get_categories(db: Session = Depends(get_db)):
     categories = db.query(Category).all()
-    return [{"id": c.id, "name": c.name} for c in categories]
+    return [{"id": c.id, "name": c.name, "name_es": c.name_es} for c in categories]

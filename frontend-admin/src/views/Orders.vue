@@ -5,26 +5,44 @@
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span>订单管理</span>
           <div style="display:flex;gap:8px">
-            <el-button @click="exportOrders">导出Excel</el-button>
+            <el-button @click="openExportDialog">导出Excel</el-button>
             <el-button type="primary" @click="openAdd">新建订单</el-button>
           </div>
         </div>
       </template>
 
-      <el-select v-model="filterStatus" placeholder="筛选状态" clearable style="margin-bottom:15px" @change="loadOrders">
-        <el-option label="待确认" :value="1" />
-        <el-option label="已确认待配货" :value="2" />
-        <el-option label="已配货待发货" :value="3" />
-        <el-option label="已发货待付款" :value="4" />
-        <el-option label="已付款完成" :value="5" />
-        <el-option label="已取消" :value="6" />
-        <el-option label="已退款" :value="7" />
-      </el-select>
+      <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap">
+        <el-select v-model="filterStatus" placeholder="筛选状态" clearable style="width:150px" @change="loadOrders">
+          <el-option label="待确认" :value="1" />
+          <el-option label="已确认待配货" :value="2" />
+          <el-option label="已配货待发货" :value="3" />
+          <el-option label="已发货待付款" :value="4" />
+          <el-option label="已付款完成" :value="5" />
+          <el-option label="已取消" :value="6" />
+          <el-option label="已退款" :value="7" />
+        </el-select>
+        <el-select v-model="filterCustomer" placeholder="筛选客户" clearable style="width:160px" @change="loadOrders">
+          <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
+        </el-select>
+        <el-date-picker
+          v-model="filterDateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          style="width:240px"
+          @change="loadOrders"
+        />
+      </div>
 
       <el-table :data="orders" stripe>
         <el-table-column prop="order_no" label="订单号" width="180" />
         <el-table-column prop="supermarket_name" label="客户" width="130" />
-        <el-table-column prop="total_amount" label="金额" width="100" />
+        <el-table-column label="金额" width="100">
+          <template #default="{ row }">
+            <span style="color:#409eff;font-weight:bold">${{ row.total_amount }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="130">
           <template #default="{ row }">
             <el-tag :type="statusType(row.status)">{{ row.status_text }}</el-tag>
@@ -40,7 +58,56 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div style="margin-top:12px;text-align:right;font-size:13px;color:#888">
+        共 {{ orders.length }} 笔订单，合计
+        <span style="color:#409eff;font-weight:bold;font-size:15px">
+          ${{ orders.reduce((s, o) => s + parseFloat(o.total_amount || 0), 0).toFixed(2) }}
+        </span>
+      </div>
     </el-card>
+
+    <!-- 导出弹窗 -->
+    <el-dialog v-model="exportDialogVisible" title="导出订单Excel" width="420px">
+      <el-form label-width="80px">
+        <el-form-item label="客户">
+          <el-select v-model="exportForm.customer_id" placeholder="全部客户" clearable style="width:100%">
+            <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="日期范围">
+          <el-date-picker
+            v-model="exportForm.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width:100%"
+          />
+        </el-form-item>
+        <el-form-item label="订单状态">
+          <el-select v-model="exportForm.status" placeholder="全部状态" clearable style="width:100%">
+            <el-option label="待确认" :value="1" />
+            <el-option label="已确认待配货" :value="2" />
+            <el-option label="已配货待发货" :value="3" />
+            <el-option label="已发货待付款" :value="4" />
+            <el-option label="已付款完成" :value="5" />
+            <el-option label="已取消" :value="6" />
+            <el-option label="已退款" :value="7" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="导出内容">
+          <el-checkbox-group v-model="exportForm.includes">
+            <el-checkbox value="summary">订单汇总</el-checkbox>
+            <el-checkbox value="items">商品明细</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="exportDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="exporting" @click="doExport">导出</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 新建订单弹窗 -->
     <el-dialog v-model="addDialogVisible" title="新建订单" width="700px">
@@ -150,13 +217,11 @@
           </el-table-column>
           <el-table-column prop="unit_price" label="单价" width="75" />
           <el-table-column prop="total_price" label="小计" width="75" />
-          <!-- 待确认时：删除单个商品 -->
           <el-table-column v-if="currentOrder.status === 1" label="操作" width="75">
             <template #default="{ row }">
               <el-button size="small" type="danger" @click="removeOrderItem(row)">删除</el-button>
             </template>
           </el-table-column>
-          <!-- 已发货后：选择退货数量 -->
           <el-table-column v-if="currentOrder.status >= 4 && currentOrder.status <= 5" label="退货数量" width="110">
             <template #default="{ row }">
               <el-input-number
@@ -168,20 +233,10 @@
           </el-table-column>
         </el-table>
 
-        <!-- 操作按钮区 -->
         <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
-          <!-- 待确认：取消整单 -->
-          <el-button v-if="currentOrder.status === 1" type="danger" @click="cancelOrder">
-            取消订单
-          </el-button>
-          <!-- 已确认及以后：退款并归还库存 -->
-          <el-button v-if="currentOrder.status >= 2 && currentOrder.status <= 5" type="warning" @click="refundOrder">
-            退款（归还库存）
-          </el-button>
-          <!-- 已发货后：退货（仅退款，库存不归还） -->
-          <el-button v-if="currentOrder.status >= 4 && currentOrder.status <= 5" type="danger" @click="returnOrder">
-            确认退货（仅退款）
-          </el-button>
+          <el-button v-if="currentOrder.status === 1" type="danger" @click="cancelOrder">取消订单</el-button>
+          <el-button v-if="currentOrder.status >= 2 && currentOrder.status <= 5" type="warning" @click="refundOrder">退款（归还库存）</el-button>
+          <el-button v-if="currentOrder.status >= 4 && currentOrder.status <= 5" type="danger" @click="returnOrder">确认退货（仅退款）</el-button>
         </div>
 
         <el-divider>操作记录</el-divider>
@@ -256,7 +311,6 @@
           </tfoot>
         </table>
         <div style="border-top:2px solid #000;margin-bottom:20px" />
-      
       </div>
       <template #footer>
         <el-button type="primary" @click="doPrint">🖨️ 打印</el-button>
@@ -278,15 +332,26 @@ const orders = ref([])
 const customers = ref([])
 const products = ref([])
 const filterStatus = ref(null)
+const filterCustomer = ref(null)
+const filterDateRange = ref(null)
 const addDialogVisible = ref(false)
 const statusDialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const invoiceDialogVisible = ref(false)
+const exportDialogVisible = ref(false)
+const exporting = ref(false)
 const currentOrder = ref(null)
 const currentOrderId = ref(null)
 const currentDiscount = ref(1.0)
 const invoiceData = ref({})
 const returnQtyMap = ref({})
+
+const exportForm = ref({
+  customer_id: null,
+  dateRange: null,
+  status: null,
+  includes: ['summary', 'items']
+})
 
 const orderForm = ref({
   supermarket_id: null, remark: '',
@@ -312,6 +377,11 @@ const statusType = (status) => {
   return map[status] || ''
 }
 
+const statusText = (status) => {
+  const map = { 1: '待确认', 2: '已确认待配货', 3: '已配货待发货', 4: '已发货待付款', 5: '已付款完成', 6: '已取消', 7: '已退款' }
+  return map[status] || ''
+}
+
 const getCustomerDiscount = (order) => {
   if (!order) return 1.0
   const customer = customers.value.find(c => c.name === order.supermarket_name)
@@ -321,6 +391,11 @@ const getCustomerDiscount = (order) => {
 const loadOrders = async () => {
   const params = {}
   if (filterStatus.value) params.status = filterStatus.value
+  if (filterCustomer.value) params.supermarket_id = filterCustomer.value
+  if (filterDateRange.value && filterDateRange.value[0]) {
+    params.date_from = filterDateRange.value[0].toISOString().split('T')[0]
+    params.date_to = filterDateRange.value[1].toISOString().split('T')[0]
+  }
   orders.value = await request.get('/orders/', { params })
 }
 
@@ -337,18 +412,83 @@ const fillPrice = (item) => {
   if (p) item.unit_price = +(p.sell_price || 0)
 }
 
-const exportOrders = () => {
-  const data = orders.value.map(o => ({
-    '订单号': o.order_no, '客户': o.supermarket_name || '',
-    '金额': o.total_amount, '状态': o.status_text,
-    '物流公司': o.logistics_company || '', '物流单号': o.tracking_number || '',
-    '备注': o.remark || '', '下单时间': o.created_at
-  }))
-  const ws = XLSX.utils.json_to_sheet(data)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, '订单列表')
-  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
-  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `订单列表_${new Date().toLocaleDateString()}.xlsx`)
+const openExportDialog = () => {
+  exportForm.value = { customer_id: null, dateRange: null, status: null, includes: ['summary', 'items'] }
+  exportDialogVisible.value = true
+}
+
+const doExport = async () => {
+  exporting.value = true
+  try {
+    // 获取符合条件的订单
+    const params = {}
+    if (exportForm.value.customer_id) params.supermarket_id = exportForm.value.customer_id
+    if (exportForm.value.status) params.status = exportForm.value.status
+    if (exportForm.value.dateRange && exportForm.value.dateRange[0]) {
+      params.date_from = exportForm.value.dateRange[0].toISOString().split('T')[0]
+      params.date_to = exportForm.value.dateRange[1].toISOString().split('T')[0]
+    }
+    const exportOrders = await request.get('/orders/', { params })
+
+    const wb = XLSX.utils.book_new()
+
+    // Sheet1: 订单汇总
+    if (exportForm.value.includes.includes('summary')) {
+      const summaryData = exportOrders.map(o => ({
+        '订单号': o.order_no,
+        '客户': o.supermarket_name || '',
+        '金额': o.total_amount,
+        '状态': o.status_text || statusText(o.status),
+        '物流公司': o.logistics_company || '',
+        '物流单号': o.tracking_number || '',
+        '备注': o.remark || '',
+        '下单时间': o.created_at
+      }))
+      // 合计行
+      const total = exportOrders.reduce((s, o) => s + parseFloat(o.total_amount || 0), 0).toFixed(2)
+      summaryData.push({ '订单号': '合计', '客户': '', '金额': total, '状态': '', '物流公司': '', '物流单号': '', '备注': '', '下单时间': '' })
+      const ws1 = XLSX.utils.json_to_sheet(summaryData)
+      ws1['!cols'] = [{ wch: 20 }, { wch: 16 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 20 }, { wch: 18 }]
+      XLSX.utils.book_append_sheet(wb, ws1, '订单汇总')
+    }
+
+    // Sheet2: 商品明细
+    if (exportForm.value.includes.includes('items')) {
+      const itemRows = []
+      for (const o of exportOrders) {
+        const detail = await request.get(`/orders/${o.id}`)
+        if (detail.items) {
+          for (const item of detail.items) {
+            itemRows.push({
+              '订单号': o.order_no,
+              '客户': o.supermarket_name || '',
+              '下单时间': o.created_at,
+              '订单状态': o.status_text || statusText(o.status),
+              '商品名称': item.product_name,
+              '条码': item.product_barcode || '',
+              '数量': item.quantity,
+              '单价': item.unit_price,
+              '小计': item.total_price,
+              '已退数量': item.returned_quantity || 0
+            })
+          }
+        }
+      }
+      const ws2 = XLSX.utils.json_to_sheet(itemRows)
+      ws2['!cols'] = [{ wch: 20 }, { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 20 }, { wch: 14 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 10 }]
+      XLSX.utils.book_append_sheet(wb, ws2, '商品明细')
+    }
+
+    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
+    const dateStr = new Date().toLocaleDateString().replace(/\//g, '-')
+    saveAs(new Blob([buf], { type: 'application/octet-stream' }), `订单导出_${dateStr}.xlsx`)
+    ElMessage.success('导出成功')
+    exportDialogVisible.value = false
+  } catch (e) {
+    ElMessage.error('导出失败')
+  } finally {
+    exporting.value = false
+  }
 }
 
 const openAdd = () => {
@@ -439,13 +579,7 @@ const printInvoice = async (row) => {
   const originalTotal = order.items
     ? order.items.reduce((s, i) => s + (i.unit_price || 0) * (i.quantity || 0), 0).toFixed(2)
     : order.total_amount
-  invoiceData.value = {
-    ...order,
-    tax_no: customer.tax_no || '',
-    address: customer.address || '',
-    discount,
-    original_total: originalTotal,
-  }
+  invoiceData.value = { ...order, tax_no: customer.tax_no || '', address: customer.address || '', discount, original_total: originalTotal }
   invoiceDialogVisible.value = true
 }
 

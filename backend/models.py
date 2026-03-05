@@ -29,12 +29,14 @@ class Category(Base):
     __tablename__ = "categories"
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), nullable=False)
+    name_es = Column(String(50), nullable=True)
 
 class Product(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True, autoincrement=True)
     barcode = Column(String(50), unique=True)
     name = Column(String(100), nullable=False)
+    name_es = Column(String(100), nullable=True)
     category_id = Column(Integer, ForeignKey("categories.id"))
     spec = Column(String(100))
     unit = Column(String(20))
@@ -63,7 +65,7 @@ class StockIn(Base):
     created_at = Column(DateTime, default=func.now())
     product = relationship("Product")
     source = Column(String(30))
-    
+
 class Order(Base):
     __tablename__ = "orders"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -90,7 +92,7 @@ class OrderItem(Base):
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
     returned_quantity = Column(Integer, default=0)
-    
+
 class OrderLog(Base):
     __tablename__ = "order_logs"
     id = Column(Integer, primary_key=True, autoincrement=True)

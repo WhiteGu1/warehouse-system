@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from database import get_db
@@ -17,6 +17,10 @@ ACCESS_TOKEN_EXPIRE_HOURS = 24
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
 
 def create_token(data: dict):
     expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
@@ -58,3 +62,24 @@ def client_login(data: LoginRequest, db: Session = Depends(get_db)):
             "discount": float(customer.discount) if customer.discount else 1.0
         }
     }
+
+@router.post("/client-change-password")
+def client_change_password(data: ChangePasswordRequest, request: Request, db: Session = Depends(get_db)):
+    from jose.exceptions import JWTError
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="未登录")
+    token = auth.split(" ")[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        customer_id = int(payload.get("sub"))
+    except JWTError:
+        raise HTTPException(status_code=401, detail="token无效")
+    customer = db.query(Supermarket).filter(Supermarket.id == customer_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    if not pwd_context.verify(data.old_password, customer.password):
+        raise HTTPException(status_code=400, detail="原密码错误")
+    customer.password = pwd_context.hash(data.new_password)
+    db.commit()
+    return {"message": "密码修改成功"}

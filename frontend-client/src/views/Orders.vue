@@ -1,33 +1,35 @@
 <template>
   <div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-      <el-button :icon="ArrowLeft" @click="$router.push('/')">返回</el-button>
-      <h2 style="margin:0;color:#333">我的订单</h2>
+      <el-button :icon="ArrowLeft" size="small" @click="$router.push('/')">{{ t.back }}</el-button>
+      <h2 style="margin:0;color:#333;font-size:clamp(16px,4vw,22px)">{{ t.myOrders }}</h2>
     </div>
 
     <el-card>
       <el-table :data="orders" stripe>
-        <el-table-column prop="order_no" label="订单号" width="190" />
-        <el-table-column prop="total_amount" label="金额" width="100">
+        <el-table-column prop="order_no" :label="t.orderNo" min-width="160" />
+        <el-table-column :label="t.orderAmount" width="100">
           <template #default="{ row }">
             <span style="color:#409eff;font-weight:bold">${{ row.total_amount }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="130">
+        <el-table-column :label="t.orderStatus" width="130">
           <template #default="{ row }">
-            <el-tag :type="statusType(row.status)">{{ row.status_text }}</el-tag>
+            <el-tag :type="statusType(row.status)" size="small">{{ statusText(row.status) || row.status_text }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="tracking_number" label="物流单号" width="140" />
-        <el-table-column prop="created_at" label="下单时间" width="170" />
-        <el-table-column label="操作" width="160">
+        <el-table-column prop="tracking_number" :label="t.trackingNo" width="130" />
+        <el-table-column prop="created_at" :label="t.orderTime" width="160" />
+        <el-table-column :label="lang === 'zh' ? '操作' : 'Acción'" width="140">
           <template #default="{ row }">
-            <el-button size="small" type="primary" plain @click="$router.push(`/order/${row.id}`)">详情</el-button>
-            <el-button size="small" type="danger" plain v-if="row.status === 1" @click="cancelOrder(row)">取消</el-button>
+            <el-button size="small" type="primary" plain @click="$router.push(`/order/${row.id}`)">{{ lang === 'zh' ? '详情' : 'Ver' }}</el-button>
+            <el-button size="small" type="danger" plain v-if="row.status === 1" @click="cancelOrder(row)">{{ t.cancelOrder }}</el-button>
           </template>
         </el-table-column>
       </el-table>
-      <div v-if="orders.length === 0" style="text-align:center;padding:40px;color:#aaa">暂无订单</div>
+      <div v-if="orders.length === 0" style="text-align:center;padding:40px;color:#aaa">
+        {{ lang === 'zh' ? '暂无订单' : 'Sin pedidos' }}
+      </div>
     </el-card>
   </div>
 </template>
@@ -38,8 +40,10 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import request from '../utils/request'
 import { useCartStore } from '../stores/cart'
-const cart = useCartStore()
+import { useLang } from '../composables/useLang'
 
+const cart = useCartStore()
+const { lang, t } = useLang()
 const orders = ref([])
 
 const statusType = (status) => {
@@ -47,32 +51,38 @@ const statusType = (status) => {
   return map[status] || ''
 }
 
+const statusText = (status) => {
+  const map = {
+    zh: { 1: '待确认', 2: '已确认待配货', 3: '已配货待发货', 4: '已发货待付款', 5: '已付款完成', 6: '已取消', 7: '已退款' },
+    es: { 1: 'Pendiente', 2: 'Confirmado', 3: 'Preparando', 4: 'Enviado', 5: 'Completado', 6: 'Cancelado', 7: 'Reembolsado' }
+  }
+  return (map[lang.value] || map.zh)[status] || ''
+}
+
 const loadOrders = async () => {
   orders.value = await request.get('/orders/my')
 }
 
 const cancelOrder = async (row) => {
-  await ElMessageBox.confirm(`确定取消订单 ${row.order_no}？取消后商品将返回购物车。`, '提示', { type: 'warning' })
-  // 先获取订单详情
+  await ElMessageBox.confirm(
+    `${t.value.confirmCancel} (${row.order_no})`,
+    t.value.confirm,
+    { type: 'warning' }
+  )
   const detail = await request.get(`/orders/${row.id}`)
   await request.post(`/orders/${row.id}/client-cancel`)
-  // 把订单商品加回购物车
   const user = JSON.parse(localStorage.getItem('client_user') || '{}')
   const discount = user.discount ?? 1.0
   detail.items.forEach(item => {
     cart.addItem({
-      id: item.product_id,
-      name: item.product_name,
-      barcode: item.product_barcode,
+      id: item.product_id, name: item.product_name, barcode: item.product_barcode,
       sell_price: +(item.unit_price / discount).toFixed(2),
-      image: null,
-      spec: null,
-      middle_pack: null,
-      piece: null
+      image: null, spec: null, middle_pack: null, piece: null
     }, item.quantity, discount)
   })
-  ElMessage.success('订单已取消，商品已返回购物车')
+  ElMessage.success(t.value.cancelSuccess)
   loadOrders()
 }
+
 onMounted(() => { loadOrders() })
 </script>
