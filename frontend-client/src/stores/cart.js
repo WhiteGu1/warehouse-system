@@ -16,23 +16,20 @@ export const useCartStore = defineStore('cart', () => {
     items.value.reduce((sum, i) => sum + i.quantity, 0)
   )
 
-  // 获取某商品在购物车中的数量
   const getQty = (product_id) => {
     const item = items.value.find(i => i.product_id === product_id)
     return item ? item.quantity : 0
   }
 
-  // 返回 {success, message}
+  // 返回 {success, code, stock} — 组件负责翻译
   const addItem = (product, quantity, discount = 1.0) => {
-    // 数量校验：必须是正整数
     if (!Number.isInteger(quantity) || quantity <= 0) {
-      return { success: false, message: '请输入正确数字' }
+      return { success: false, code: 'invalid_qty' }
     }
     const existing = items.value.find(i => i.product_id === product.id)
     const newQty = (existing ? existing.quantity : 0) + quantity
-    // 库存校验
     if (product.stock !== undefined && newQty > product.stock) {
-      return { success: false, message: `库存不足，当前库存 ${product.stock} 件` }
+      return { success: false, code: 'insufficient_stock', stock: product.stock }
     }
     const unit_price = +(parseFloat(product.sell_price || 0) * discount).toFixed(2)
     if (existing) {
@@ -55,17 +52,17 @@ export const useCartStore = defineStore('cart', () => {
     return { success: true }
   }
 
-  // 直接设置数量（购物车内修改），qty=0则删除，返回 {success, message}
+  // 返回 {success, code, stock}
   const updateQty = (product_id, quantity, stock) => {
     if (quantity === 0) {
       removeItem(product_id)
       return { success: true }
     }
     if (!Number.isInteger(quantity) || quantity < 0) {
-      return { success: false, message: '请输入正确数字' }
+      return { success: false, code: 'invalid_qty' }
     }
     if (stock !== undefined && quantity > stock) {
-      return { success: false, message: `库存不足，当前库存 ${stock} 件` }
+      return { success: false, code: 'insufficient_stock', stock }
     }
     const item = items.value.find(i => i.product_id === product_id)
     if (item) {
@@ -80,7 +77,6 @@ export const useCartStore = defineStore('cart', () => {
     save()
   }
 
-  // 提交订单前库存校验，返回缺货商品列表
   const validateStock = async (productList) => {
     const outOfStock = []
     for (const item of items.value) {

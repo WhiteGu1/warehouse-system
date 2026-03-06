@@ -35,7 +35,7 @@
         />
       </div>
 
-      <el-table :data="orders" stripe>
+      <el-table :data="orders" stripe v-loading="loading">
         <el-table-column prop="order_no" label="订单号" width="180" />
         <el-table-column prop="supermarket_name" label="客户" width="130" />
         <el-table-column label="金额" width="100">
@@ -59,11 +59,19 @@
         </el-table-column>
       </el-table>
 
-      <div style="margin-top:12px;text-align:right;font-size:13px;color:#888">
-        共 {{ orders.length }} 笔订单，合计
-        <span style="color:#409eff;font-weight:bold;font-size:15px">
-          ${{ orders.reduce((s, o) => s + parseFloat(o.total_amount || 0), 0).toFixed(2) }}
-        </span>
+      <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <el-pagination
+          v-model:current-page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          layout="total, prev, pager, next, jumper"
+          background
+          @current-change="fetchOrders"
+        />
+        <div style="font-size:13px;color:#888">
+          共 <b>{{ summaryCount }}</b> 笔订单，合计
+          <span style="color:#409eff;font-weight:bold;font-size:15px">${{ summaryTotal.toFixed(2) }}</span>
+        </div>
       </div>
     </el-card>
 
@@ -345,12 +353,15 @@ const currentOrderId = ref(null)
 const currentDiscount = ref(1.0)
 const invoiceData = ref({})
 const returnQtyMap = ref({})
+const total = ref(0)
+const currentPage = ref(1)
+const pageSize = 50
+const loading = ref(false)
+const summaryTotal = ref(0)
+const summaryCount = ref(0)
 
 const exportForm = ref({
-  customer_id: null,
-  dateRange: null,
-  status: null,
-  includes: ['summary', 'items']
+  customer_id: null, dateRange: null, status: null, includes: ['summary', 'items']
 })
 
 const orderForm = ref({
@@ -388,15 +399,37 @@ const getCustomerDiscount = (order) => {
   return customer ? (customer.discount ?? 1.0) : 1.0
 }
 
-const loadOrders = async () => {
+const buildFilterParams = () => {
   const params = {}
   if (filterStatus.value) params.status = filterStatus.value
   if (filterCustomer.value) params.supermarket_id = filterCustomer.value
-  if (filterDateRange.value && filterDateRange.value[0]) {
+  if (filterDateRange.value?.[0]) {
     params.date_from = filterDateRange.value[0].toISOString().split('T')[0]
     params.date_to = filterDateRange.value[1].toISOString().split('T')[0]
   }
-  orders.value = await request.get('/orders/', { params })
+  return params
+}
+
+const loadOrders = async () => {
+  currentPage.value = 1
+  await fetchOrders()
+}
+
+const fetchOrders = async () => {
+  loading.value = true
+  try {
+    const filterParams = buildFilterParams()
+    const [res, summary] = await Promise.all([
+      request.get('/orders/', { params: { ...filterParams, page: currentPage.value, page_size: pageSize } }),
+      request.get('/orders/summary', { params: filterParams })
+    ])
+    orders.value = res.items
+    total.value = res.total
+    summaryCount.value = summary.count
+    summaryTotal.value = summary.total
+  } finally {
+    loading.value = false
+  }
 }
 
 const loadCustomers = async () => { customers.value = await request.get('/customers/') }
@@ -420,39 +453,31 @@ const openExportDialog = () => {
 const doExport = async () => {
   exporting.value = true
   try {
-    // 获取符合条件的订单
     const params = {}
     if (exportForm.value.customer_id) params.supermarket_id = exportForm.value.customer_id
     if (exportForm.value.status) params.status = exportForm.value.status
-    if (exportForm.value.dateRange && exportForm.value.dateRange[0]) {
+    if (exportForm.value.dateRange?.[0]) {
       params.date_from = exportForm.value.dateRange[0].toISOString().split('T')[0]
       params.date_to = exportForm.value.dateRange[1].toISOString().split('T')[0]
     }
-    const exportOrders = await request.get('/orders/', { params })
+    const res = await request.get('/orders/', { params: { ...params, page: 1, page_size: 99999 } })
+    const exportOrders = res.items
 
     const wb = XLSX.utils.book_new()
 
-    // Sheet1: 订单汇总
     if (exportForm.value.includes.includes('summary')) {
       const summaryData = exportOrders.map(o => ({
-        '订单号': o.order_no,
-        '客户': o.supermarket_name || '',
-        '金额': o.total_amount,
-        '状态': o.status_text || statusText(o.status),
-        '物流公司': o.logistics_company || '',
-        '物流单号': o.tracking_number || '',
-        '备注': o.remark || '',
-        '下单时间': o.created_at
+        '订单号': o.order_no, '客户': o.supermarket_name || '', '金额': o.total_amount,
+        '状态': o.status_text || statusText(o.status), '物流公司': o.logistics_company || '',
+        '物流单号': o.tracking_number || '', '备注': o.remark || '', '下单时间': o.created_at
       }))
-      // 合计行
-      const total = exportOrders.reduce((s, o) => s + parseFloat(o.total_amount || 0), 0).toFixed(2)
-      summaryData.push({ '订单号': '合计', '客户': '', '金额': total, '状态': '', '物流公司': '', '物流单号': '', '备注': '', '下单时间': '' })
+      const totalAmt = exportOrders.reduce((s, o) => s + parseFloat(o.total_amount || 0), 0).toFixed(2)
+      summaryData.push({ '订单号': '合计', '客户': '', '金额': totalAmt, '状态': '', '物流公司': '', '物流单号': '', '备注': '', '下单时间': '' })
       const ws1 = XLSX.utils.json_to_sheet(summaryData)
       ws1['!cols'] = [{ wch: 20 }, { wch: 16 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 20 }, { wch: 18 }]
       XLSX.utils.book_append_sheet(wb, ws1, '订单汇总')
     }
 
-    // Sheet2: 商品明细
     if (exportForm.value.includes.includes('items')) {
       const itemRows = []
       for (const o of exportOrders) {
@@ -460,16 +485,10 @@ const doExport = async () => {
         if (detail.items) {
           for (const item of detail.items) {
             itemRows.push({
-              '订单号': o.order_no,
-              '客户': o.supermarket_name || '',
-              '下单时间': o.created_at,
-              '订单状态': o.status_text || statusText(o.status),
-              '商品名称': item.product_name,
-              '条码': item.product_barcode || '',
-              '数量': item.quantity,
-              '单价': item.unit_price,
-              '小计': item.total_price,
-              '已退数量': item.returned_quantity || 0
+              '订单号': o.order_no, '客户': o.supermarket_name || '', '下单时间': o.created_at,
+              '订单状态': o.status_text || statusText(o.status), '商品名称': item.product_name,
+              '条码': item.product_barcode || '', '数量': item.quantity, '单价': item.unit_price,
+              '小计': item.total_price, '已退数量': item.returned_quantity || 0
             })
           }
         }
@@ -480,8 +499,7 @@ const doExport = async () => {
     }
 
     const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
-    const dateStr = new Date().toLocaleDateString().replace(/\//g, '-')
-    saveAs(new Blob([buf], { type: 'application/octet-stream' }), `订单导出_${dateStr}.xlsx`)
+    saveAs(new Blob([buf], { type: 'application/octet-stream' }), `订单导出_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`)
     ElMessage.success('导出成功')
     exportDialogVisible.value = false
   } catch (e) {
@@ -503,12 +521,7 @@ const removeItem = (index) => { orderForm.value.items.splice(index, 1) }
 const saveOrder = async () => {
   if (!orderForm.value.supermarket_id) { ElMessage.warning('请选择客户'); return }
   if (orderForm.value.items.some(i => !i.product_id)) { ElMessage.warning('请选择商品'); return }
-  const payload = {
-    ...orderForm.value,
-    discount: currentDiscount.value,
-    total_amount_override: parseFloat(totalAmount.value)
-  }
-  await request.post('/orders/', payload)
+  await request.post('/orders/', { ...orderForm.value, discount: currentDiscount.value, total_amount_override: parseFloat(totalAmount.value) })
   ElMessage.success('订单创建成功')
   addDialogVisible.value = false
   loadOrders()
@@ -535,7 +548,9 @@ const viewDetail = async (row) => {
 }
 
 const removeOrderItem = async (row) => {
-  await ElMessageBox.confirm(`确定从订单中删除"${row.product_name}"？`, '提示', { type: 'warning' })
+  try {
+    await ElMessageBox.confirm(`确定从订单中删除"${row.product_name}"？`, '提示', { type: 'warning' })
+  } catch { return }
   await request.delete(`/orders/${currentOrder.value.id}/items/${row.id}`)
   ElMessage.success('已删除，库存已归还')
   currentOrder.value = await request.get(`/orders/${currentOrder.value.id}`)
@@ -543,7 +558,9 @@ const removeOrderItem = async (row) => {
 }
 
 const cancelOrder = async () => {
-  await ElMessageBox.confirm('确定取消该订单？库存将归还。', '提示', { type: 'warning' })
+  try {
+    await ElMessageBox.confirm('确定取消该订单？库存将归还。', '提示', { type: 'warning' })
+  } catch { return }
   await request.post(`/orders/${currentOrder.value.id}/cancel`)
   ElMessage.success('订单已取消，库存已归还')
   detailDialogVisible.value = false
@@ -551,7 +568,9 @@ const cancelOrder = async () => {
 }
 
 const refundOrder = async () => {
-  await ElMessageBox.confirm('确定退款？库存将归还。', '提示', { type: 'warning' })
+  try {
+    await ElMessageBox.confirm('确定退款？库存将归还。', '提示', { type: 'warning' })
+  } catch { return }
   await request.post(`/orders/${currentOrder.value.id}/refund`)
   ElMessage.success('退款成功，库存已归还')
   currentOrder.value = await request.get(`/orders/${currentOrder.value.id}`)
@@ -563,7 +582,9 @@ const returnOrder = async () => {
     .filter(([, qty]) => qty > 0)
     .map(([id, qty]) => ({ item_id: parseInt(id), quantity: qty }))
   if (items.length === 0) { ElMessage.warning('请填写退货数量'); return }
-  await ElMessageBox.confirm('确定退货？库存不归还，出库记录标记仅退款。', '提示', { type: 'warning' })
+  try {
+    await ElMessageBox.confirm('确定退货？库存不归还，出库记录标记仅退款。', '提示', { type: 'warning' })
+  } catch { return }
   await request.post(`/orders/${currentOrder.value.id}/return`, { items })
   ElMessage.success('退货登记成功')
   currentOrder.value = await request.get(`/orders/${currentOrder.value.id}`)

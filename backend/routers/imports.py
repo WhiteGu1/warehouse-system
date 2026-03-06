@@ -57,10 +57,29 @@ def get_batches(db: Session = Depends(get_db)):
         "created_at": b.created_at.strftime("%Y-%m-%d %H:%M:%S") if b.created_at else None
     } for b in batches]
 
+MAX_UPLOAD_MB = 1024
+
 @router.post("/upload")
 async def import_excel(file: UploadFile = File(...), column_map: str = Form(""), db: Session = Depends(get_db)):
-    content = await file.read()
-    wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    chunks = []
+    total_size = 0
+    while True:
+        chunk = await file.read(512 * 1024)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > MAX_UPLOAD_MB * 1024 * 1024:
+            raise HTTPException(status_code=400, detail=f"文件过大，最大支持 {MAX_UPLOAD_MB}MB")
+        chunks.append(chunk)
+    content = b"".join(chunks)
+
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=False)
+    except MemoryError:
+        raise HTTPException(status_code=400, detail="文件图片过大导致内存不足，请删除Excel中的图片后重试")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Excel文件读取失败：{str(e)}")
+
     ws = wb.worksheets[0]
 
     try:
@@ -79,29 +98,38 @@ async def import_excel(file: UploadFile = File(...), column_map: str = Form(""),
     piece_col = to_int_col(col_map.get("piece"))
     image_col = to_int_col(col_map.get("image_col"))
 
-    # 提取嵌入图片，按行号建立映射
+    # 嵌入图片提取（仅30MB以下文件）
     image_map = {}
-    try:
-        for img in ws._images:
-            row_num = img.anchor._from.row + 1
-            img_data = img._data()
-            filename = f"{uuid.uuid4()}.jpg"
-            filepath = os.path.join(UPLOAD_DIR, filename)
-            pil_img = PilImage.open(io.BytesIO(img_data)).convert("RGB")
-            w, h = pil_img.size
-            target_ratio = 4 / 3
-            if (w / h) > target_ratio:
-                new_w = int(h * target_ratio)
-                left = (w - new_w) // 2
-                pil_img = pil_img.crop((left, 0, left + new_w, h))
-            else:
-                new_h = int(w / target_ratio)
-                top = (h - new_h) // 2
-                pil_img = pil_img.crop((0, top, w, top + new_h))
-            pil_img.save(filepath, "JPEG")
-            image_map[row_num] = f"/uploads/{filename}"
-    except:
-        pass
+    file_size_mb = total_size / 1024 / 1024
+    if file_size_mb <= 30:
+        MAX_IMG_BYTES = 5 * 1024 * 1024
+        try:
+            for img in ws._images:
+                try:
+                    row_num = img.anchor._from.row + 1
+                    img_data = img._data()
+                    if not img_data or len(img_data) > MAX_IMG_BYTES:
+                        continue
+                    filename = f"{uuid.uuid4()}.jpg"
+                    filepath = os.path.join(UPLOAD_DIR, filename)
+                    pil_img = PilImage.open(io.BytesIO(img_data)).convert("RGB")
+                    pil_img.thumbnail((800, 800), PilImage.LANCZOS)
+                    w, h = pil_img.size
+                    target_ratio = 4 / 3
+                    if (w / h) > target_ratio:
+                        new_w = int(h * target_ratio)
+                        left = (w - new_w) // 2
+                        pil_img = pil_img.crop((left, 0, left + new_w, h))
+                    else:
+                        new_h = int(w / target_ratio)
+                        top = (h - new_h) // 2
+                        pil_img = pil_img.crop((0, top, w, top + new_h))
+                    pil_img.save(filepath, "JPEG", quality=80)
+                    image_map[row_num] = f"/uploads/{filename}"
+                except Exception:
+                    continue
+        except Exception:
+            pass
 
     uncategorized = db.query(Category).filter(Category.name == "未分类").first()
     uncategorized_id = uncategorized.id if uncategorized else None
@@ -158,6 +186,12 @@ async def import_excel(file: UploadFile = File(...), column_map: str = Form(""),
 
         try:
             cost_price_float = float(str(cost_price))
+            if cost_price_float > 99999.99:
+                raise ValueError("进价过大")
+        except ValueError as ve:
+            failed += 1
+            db.add(ImportFailed(batch_id=batch.id, row_data=row_summary[:500], reason=f"第{row_idx}行 {name} - 进价异常：{cost_price}，请检查列映射是否正确"))
+            continue
         except:
             failed += 1
             db.add(ImportFailed(batch_id=batch.id, row_data=row_summary[:500], reason=f"第{row_idx}行 {name} - 进价必须为纯数字，当前值：{cost_price}"))
@@ -218,7 +252,6 @@ async def import_excel(file: UploadFile = File(...), column_map: str = Form(""),
         db.add(product)
         db.flush()
 
-        # 入库记录
         stock_record = StockIn(
             product_id=product.id,
             quantity=stock_int,
@@ -229,7 +262,6 @@ async def import_excel(file: UploadFile = File(...), column_map: str = Form(""),
         )
         db.add(stock_record)
 
-        # 图片处理：优先嵌入图片，其次URL
         if row_idx in image_map:
             product.image = image_map[row_idx]
         elif image_url and str(image_url).strip():
@@ -256,7 +288,6 @@ async def import_excel(file: UploadFile = File(...), column_map: str = Form(""),
         "failed": failed,
         "pending_price": pending_price
     }
-
 @router.delete("/batches/{batch_id}")
 def rollback_batch(batch_id: int, db: Session = Depends(get_db)):
     batch = db.query(ImportBatch).filter(ImportBatch.id == batch_id).first()

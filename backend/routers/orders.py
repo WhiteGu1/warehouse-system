@@ -91,29 +91,35 @@ def get_orders(status: Optional[int] = None, db: Session = Depends(get_db)):
         })
     return result
 
-@router.get("/my")
-def get_my_orders(request: Request, db: Session = Depends(get_db)):
-    from jose import jwt
-    from jose.exceptions import JWTError
-    SECRET_KEY = "warehouse-secret-key-2024"
-    ALGORITHM = "HS256"
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="未登录")
-    token = auth.split(" ")[1]
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        customer_id = int(payload.get("sub"))
-    except JWTError:
-        raise HTTPException(status_code=401, detail="token无效")
-    orders = db.query(Order).filter(
-        Order.supermarket_id == customer_id
-    ).order_by(Order.created_at.desc()).all()
+@router.get("/")
+def get_orders(
+    status: Optional[int] = None,
+    supermarket_id: Optional[int] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 50,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Order)
+    if status:
+        query = query.filter(Order.status == status)
+    if supermarket_id:
+        query = query.filter(Order.supermarket_id == supermarket_id)
+    if date_from:
+        query = query.filter(Order.created_at >= date_from)
+    if date_to:
+        query = query.filter(Order.created_at <= date_to + " 23:59:59")
+
+    total = query.count()
+    orders = query.order_by(Order.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+
     result = []
     for o in orders:
         result.append({
             "id": o.id,
             "order_no": o.order_no,
+            "supermarket_name": o.supermarket.name if o.supermarket else None,
             "status": o.status,
             "status_text": STATUS_MAP.get(o.status, "未知"),
             "total_amount": float(o.total_amount) if o.total_amount else 0,
@@ -122,7 +128,7 @@ def get_my_orders(request: Request, db: Session = Depends(get_db)):
             "remark": o.remark,
             "created_at": o.created_at.strftime("%Y-%m-%d %H:%M:%S") if o.created_at else None
         })
-    return result
+    return {"total": total, "items": result}
 
 @router.get("/{order_id}")
 def get_order_detail(order_id: int, db: Session = Depends(get_db)):

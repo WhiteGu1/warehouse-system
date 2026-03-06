@@ -88,7 +88,7 @@ import { useLang } from '../composables/useLang'
 
 const router = useRouter()
 const cart = useCartStore()
-const { t } = useLang()
+const { lang, t } = useLang()
 const remark = ref('')
 const submitting = ref(false)
 const discount = ref(1.0)
@@ -100,9 +100,22 @@ const originalTotal = computed(() => {
   }, 0).toFixed(2)
 })
 
+const cartMsg = (result) => {
+  if (result.code === 'insufficient_stock') return `${t.value.stockInsufficient} ${result.stock}`
+  return t.value.correctNumber
+}
+
 const onQtyChange = (item, val) => {
-  if (!Number.isInteger(val) || val <= 0) { ElMessage.warning(t.value.correctNumber); item.quantity = item.middle_pack || 1; return }
-  if (item.stock !== undefined && val > item.stock) { ElMessage.warning(`${t.value.stockInsufficient} ${item.stock}`); item.quantity = item.stock; return }
+  if (!Number.isInteger(val) || val <= 0) {
+    ElMessage.warning(t.value.correctNumber)
+    item.quantity = item.middle_pack || 1
+    return
+  }
+  if (item.stock !== undefined && val > item.stock) {
+    ElMessage.warning(`${t.value.stockInsufficient} ${item.stock}`)
+    item.quantity = item.stock
+    return
+  }
   cart.updateQty(item.product_id, val, item.stock)
 }
 
@@ -164,11 +177,7 @@ onMounted(() => {
   align-items: center;
 }
 @media (max-width: 768px) {
-  .cart-layout {
-    flex-direction: column;
-  }
-  .cart-summary {
-    width: 100%;
-  }
+  .cart-layout { flex-direction: column; }
+  .cart-summary { width: 100%; }
 }
 </style>

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional
 from database import get_db
@@ -63,8 +64,26 @@ def get_products(
     if category_id:
         query = query.filter(Product.category_id == category_id)
     products = query.all()
+
+    # 批量查询每个商品最后入库时间，只计算正常入库（排除退款/取消）
+    last_stockin_map = {}
+    if products:
+        product_ids = [p.id for p in products]
+        rows = (
+            db.query(StockIn.product_id, func.max(StockIn.created_at).label("last_in"))
+            .filter(
+                StockIn.product_id.in_(product_ids),
+                StockIn.source.in_(['manual_new', 'manual_add', 'import'])
+            )
+            .group_by(StockIn.product_id)
+            .all()
+        )
+        for row in rows:
+            last_stockin_map[row.product_id] = row.last_in
+
     result = []
     for p in products:
+        last_in = last_stockin_map.get(p.id)
         result.append({
             "id": p.id,
             "barcode": p.barcode,
@@ -84,6 +103,8 @@ def get_products(
             "middle_pack": p.middle_pack,
             "piece": p.piece,
             "item_no": p.item_no,
+            "last_stock_in": last_in.strftime("%Y-%m-%d %H:%M:%S") if last_in else None,
+            "created_at": p.created_at.strftime("%Y-%m-%d %H:%M:%S") if p.created_at else None,
         })
     return result
 

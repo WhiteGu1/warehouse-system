@@ -17,14 +17,24 @@
       <el-checkbox v-model="filterSpecial" :label="t.specialOnly" border size="small" />
       <el-checkbox v-model="filterInStock" :label="t.inStockOnly" border size="small" />
       <el-checkbox v-model="filterFav" :label="t.favOnly" border size="small" />
-      <el-select v-model="sortBy" size="small" style="width:130px" :placeholder="lang === 'es' ? 'Ordenar' : '排序方式'">
+      <el-button
+        :type="filterNew ? 'warning' : ''"
+        size="small" round
+        @click="filterNew = !filterNew"
+        style="font-weight:bold"
+      >NEW! {{ t.filterNew }}</el-button>
+      <el-select v-model="sortBy" size="small" style="width:140px" :placeholder="lang === 'es' ? 'Ordenar' : '排序方式'">
         <el-option :label="t.sortDefault" value="" />
         <el-option :label="t.sortPriceAsc" value="price_asc" />
         <el-option :label="t.sortPriceDesc" value="price_desc" />
         <el-option :label="t.sortNameAsc" value="name_asc" />
         <el-option :label="t.sortNameDesc" value="name_desc" />
-        <el-option :label="t.sortStockDesc" value="stock_desc" />
       </el-select>
+    </div>
+
+    <!-- 新商品提示栏 -->
+    <div v-if="filterNew" style="margin-bottom:12px;background:linear-gradient(90deg,#fff7e6,#fffbe6);border:1px solid #ffe58f;border-radius:8px;padding:8px 14px;font-size:13px;color:#d48806;display:flex;align-items:center;gap:8px">
+      NEW! {{ t.newProductsTitle }}（{{ filteredProducts.length }} {{ t.products }}）
     </div>
 
     <!-- 商品网格 -->
@@ -56,6 +66,8 @@
           <div v-if="p.special_price" style="position:absolute;top:8px;left:8px;background:#f56c6c;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold">{{ t.special }}</div>
           <div v-else-if="p.stock <= 0" style="position:absolute;top:8px;left:8px;background:#909399;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px">{{ t.outOfStock }}</div>
           <div v-else-if="p.stock < 10" style="position:absolute;top:8px;left:8px;background:#e6a23c;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px">{{ t.lowStock }}</div>
+          <!-- 新商品标签 -->
+          <div v-if="isNewProduct(p)" style="position:absolute;bottom:8px;left:8px;background:#fa8c16;color:#fff;font-size:10px;padding:1px 6px;border-radius:8px;font-weight:bold">🆕 NEW</div>
         </div>
 
         <!-- 商品信息 -->
@@ -65,14 +77,22 @@
           </div>
           <div style="font-size:11px;color:#999;margin-bottom:2px">{{ t.barcode }}：{{ p.barcode || '-' }}</div>
           <div style="font-size:11px;color:#999;margin-bottom:2px">{{ t.spec }}：{{ p.spec || '-' }}</div>
-          <!-- bulto / paquete 显示 -->
           <div style="font-size:11px;color:#777;margin-bottom:2px;background:#f5f7fa;border-radius:4px;padding:2px 6px;display:inline-block">
             bulto: {{ p.piece || 1 }} | paquete: {{ p.middle_pack || 1 }}
+          </div>
+          <!-- 最后入库时间 -->
+          <div v-if="p.last_stock_in" style="font-size:10px;color:#bbb;margin-top:2px">
+            {{ t.lastStockIn }}：{{ p.last_stock_in.slice(0,10) }}
           </div>
           <div style="margin-top:6px">
             <template v-if="p.special_price">
               <div style="font-size:11px;color:#aaa;text-decoration:line-through">${{ p.sell_price }}</div>
-              <div style="font-size:15px;font-weight:bold;color:#f56c6c">${{ p.special_price }}</div>
+              <div style="display:flex;align-items:center;gap:4px">
+                <span style="font-size:15px;font-weight:bold;color:#f56c6c">${{ p.special_price }}</span>
+                <span v-if="p.sell_price" style="font-size:10px;background:#f56c6c;color:#fff;padding:1px 5px;border-radius:8px">
+                  -{{ ((1 - p.special_price / p.sell_price) * 100).toFixed(0) }}%
+                </span>
+              </div>
             </template>
             <template v-else>
               <div style="font-size:15px;font-weight:bold;color:#409eff">${{ p.sell_price }}</div>
@@ -127,9 +147,16 @@
           <div><b>bulto：</b>{{ detailProduct.piece || 1 }}</div>
           <div><b>paquete：</b>{{ detailProduct.middle_pack || 1 }}</div>
           <div><b>{{ t.stock }}：</b>{{ detailProduct.stock }}</div>
+          <div v-if="detailProduct.last_stock_in"><b>{{ t.lastStockIn }}：</b>{{ detailProduct.last_stock_in.slice(0,10) }}</div>
           <template v-if="detailProduct.special_price">
             <div><b>{{ t.originalPrice }}：</b><span style="text-decoration:line-through;color:#aaa">${{ detailProduct.sell_price }}</span></div>
-            <div><b>{{ t.special }}：</b><span style="color:#f56c6c;font-weight:bold;font-size:16px">${{ detailProduct.special_price }}</span></div>
+            <div>
+              <b>{{ t.special }}：</b>
+              <span style="color:#f56c6c;font-weight:bold;font-size:16px">${{ detailProduct.special_price }}</span>
+              <span v-if="detailProduct.sell_price" style="font-size:12px;background:#f56c6c;color:#fff;padding:1px 6px;border-radius:8px;margin-left:6px">
+                -{{ ((1 - detailProduct.special_price / detailProduct.sell_price) * 100).toFixed(0) }}%
+              </span>
+            </div>
           </template>
           <template v-else>
             <div><b>{{ t.price }}：</b><span style="color:#409eff;font-weight:bold;font-size:16px">${{ detailProduct.sell_price }}</span></div>
@@ -146,7 +173,7 @@
     <el-dialog v-model="qtyEditVisible" width="min(340px,92vw)" :title="`${t.cartQty} - ${lang === 'es' && qtyEditProduct.name_es ? qtyEditProduct.name_es : qtyEditProduct.name}`">
       <div style="font-size:13px;color:#999;margin-bottom:12px">
         {{ t.currentStock }}：{{ qtyEditProduct.stock }}
-        <span v-if="qtyEditProduct.middle_pack"> · bulto {{ qtyEditProduct.middle_pack }}</span>
+        <span v-if="qtyEditProduct.middle_pack"> · paquete {{ qtyEditProduct.middle_pack }}</span>
       </div>
       <el-input-number v-model="qtyEditVal" :min="0" :step="qtyEditProduct.middle_pack || 1" :max="qtyEditProduct.stock || 9999" size="large" style="width:100%" />
       <div style="font-size:12px;color:#aaa;margin-top:8px">{{ t.deleteIfZero }}</div>
@@ -175,6 +202,7 @@ const selectedCategory = ref(null)
 const filterSpecial = ref(false)
 const filterInStock = ref(false)
 const filterFav = ref(false)
+const filterNew = ref(false)
 const sortBy = ref('')
 const qtyMap = ref({})
 const detailVisible = ref(false)
@@ -187,6 +215,15 @@ const qtyEditVal = ref(0)
 const favorites = ref(JSON.parse(localStorage.getItem('favorites') || '[]'))
 const currentPage = ref(1)
 const pageSize = 50
+
+// 近2个月判断（用 created_at 商品创建时间）
+const twoMonthsAgo = new Date()
+twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2)
+
+const isNewProduct = (p) => {
+  if (!p.created_at) return false
+  return new Date(p.created_at) >= twoMonthsAgo
+}
 
 const isFav = (id) => favorites.value.includes(id)
 const toggleFav = (p) => {
@@ -211,28 +248,39 @@ const filteredProducts = computed(() => {
   if (filterSpecial.value) list = list.filter(p => p.special_price)
   if (filterInStock.value) list = list.filter(p => p.stock > 0)
   if (filterFav.value) list = list.filter(p => isFav(p.id))
+  if (filterNew.value) list = list.filter(p => isNewProduct(p))
   list = [...list]
   if (sortBy.value === 'price_asc') list.sort((a, b) => (a.special_price || a.sell_price || 0) - (b.special_price || b.sell_price || 0))
   else if (sortBy.value === 'price_desc') list.sort((a, b) => (b.special_price || b.sell_price || 0) - (a.special_price || a.sell_price || 0))
   else if (sortBy.value === 'name_asc') list.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
   else if (sortBy.value === 'name_desc') list.sort((a, b) => (b.name || '').localeCompare(a.name || ''))
-  else if (sortBy.value === 'stock_desc') list.sort((a, b) => (b.stock || 0) - (a.stock || 0))
+  else if (sortBy.value === 'stock_in_desc') {
+    list.sort((a, b) => {
+      if (!a.last_stock_in && !b.last_stock_in) return 0
+      if (!a.last_stock_in) return 1
+      if (!b.last_stock_in) return -1
+      return b.last_stock_in.localeCompare(a.last_stock_in)
+    })
+  }
   return list
 })
 
-// 当筛选条件变化时重置到第1页
-watch([filteredProducts], () => { currentPage.value = 1 })
+watch(filteredProducts, () => { currentPage.value = 1 })
 
 const pagedProducts = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   return filteredProducts.value.slice(start, start + pageSize)
 })
 
-const onPageChange = () => {
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+const onPageChange = () => { window.scrollTo({ top: 0, behavior: 'smooth' }) }
+
+const cartMsg = (result) => {
+  if (result.code === 'insufficient_stock') return `${t.value.stockInsufficient} ${result.stock}`
+  return t.value.correctNumber
 }
 
 const cartPrice = (p) => p.special_price ? p.special_price : p.sell_price
+
 const loadProducts = async () => {
   products.value = await request.get('/products/')
   products.value.forEach(p => { qtyMap.value[p.id] = p.middle_pack || 1 })
@@ -243,12 +291,12 @@ const addToCart = (p) => {
   const qty = qtyMap.value[p.id]
   if (!Number.isInteger(qty) || qty <= 0) { ElMessage.warning(t.value.correctNumber); return }
   const result = cart.addItem({ ...p, sell_price: cartPrice(p) }, qty, discount.value)
-  if (!result.success) { ElMessage.warning(result.message); return }
+  if (!result.success) { ElMessage.warning(cartMsg(result)); return }
   ElMessage.success(t.value.addedToCart)
 }
 const addPack = (p) => {
   const result = cart.addItem({ ...p, sell_price: cartPrice(p) }, p.middle_pack, discount.value)
-  if (!result.success) { ElMessage.warning(result.message); return }
+  if (!result.success) { ElMessage.warning(cartMsg(result)); return }
   ElMessage.success(`${t.value.addedPacks} ${p.middle_pack}`)
 }
 const openDetail = (p) => { detailProduct.value = p; detailQty.value = p.middle_pack || 1; detailVisible.value = true }
@@ -256,7 +304,7 @@ const addDetailToCart = () => {
   const qty = detailQty.value
   if (!Number.isInteger(qty) || qty <= 0) { ElMessage.warning(t.value.correctNumber); return }
   const result = cart.addItem({ ...detailProduct.value, sell_price: cartPrice(detailProduct.value) }, qty, discount.value)
-  if (!result.success) { ElMessage.warning(result.message); return }
+  if (!result.success) { ElMessage.warning(cartMsg(result)); return }
   ElMessage.success(t.value.addedToCart); detailVisible.value = false
 }
 const openQtyEdit = (p) => { qtyEditProduct.value = p; qtyEditVal.value = cart.getQty(p.id); qtyEditVisible.value = true }
@@ -264,8 +312,9 @@ const confirmQtyEdit = () => {
   const val = qtyEditVal.value
   if (val !== 0 && (!Number.isInteger(val) || val < 0)) { ElMessage.warning(t.value.correctNumber); return }
   const result = cart.updateQty(qtyEditProduct.value.id, val, qtyEditProduct.value.stock)
-  if (!result.success) { ElMessage.warning(result.message); return }
-  ElMessage.success(val === 0 ? t.value.uncollected : t.value.addedToCart); qtyEditVisible.value = false
+  if (!result.success) { ElMessage.warning(cartMsg(result)); return }
+  ElMessage.success(val === 0 ? t.value.uncollected : t.value.addedToCart)
+  qtyEditVisible.value = false
 }
 onMounted(() => {
   const u = localStorage.getItem('client_user')
