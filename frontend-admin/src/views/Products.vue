@@ -11,81 +11,79 @@
         </div>
       </template>
 
-      <!-- 搜索/分类/排序/筛选栏 -->
-      <el-row :gutter="10" style="margin-bottom:10px">
-        <el-col :span="7">
-          <el-input v-model="keyword" placeholder="搜索商品名称或条码" clearable @input="loadProducts">
-            <template #prefix><el-icon><Search /></el-icon></template>
-          </el-input>
-        </el-col>
-        <el-col :span="5">
-          <el-select v-model="categoryId" placeholder="选择分类" clearable @change="loadProducts">
-            <el-option v-for="c in categories" :key="c.id" :value="c.id">
-              <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
-                <span>{{ c.name }}</span>
-                <el-badge :value="c.product_count" :max="999" type="primary" style="margin-left:8px" />
-              </div>
-            </el-option>
-            <template #footer>
-              <el-button text style="width:100%;padding:8px 0" @click="categoryDialogVisible = true">✏️ 编辑分类</el-button>
-            </template>
-          </el-select>
-        </el-col>
-        <el-col :span="5">
-          <el-select v-model="sortBy" placeholder="排序方式" clearable @change="loadProducts">
-            <el-option label="默认顺序" value="" />
-            <el-option label="名称 A→Z" value="name_asc" />
-            <el-option label="名称 Z→A" value="name_desc" />
-            <el-option label="库存从多到少" value="stock_desc" />
-            <el-option label="库存从少到多" value="stock_asc" />
-            <el-option label="售价从高到低" value="price_desc" />
-            <el-option label="售价从低到高" value="price_asc" />
-            <el-option label="最近入库" value="stock_in_desc" />
-            <el-option label="最久未入库" value="stock_in_asc" />
-          </el-select>
-        </el-col>
-        <el-col :span="7" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <el-check-tag :checked="filterSpecial" @change="filterSpecial = !filterSpecial; loadProducts()" style="font-size:12px">有特价</el-check-tag>
-          <el-check-tag :checked="filterInStock" @change="filterInStock = !filterInStock; loadProducts()" type="success" style="font-size:12px">有库存</el-check-tag>
-          <el-check-tag :checked="filterNoStock" @change="filterNoStock = !filterNoStock; loadProducts()" type="danger" style="font-size:12px">无库存</el-check-tag>
-          <el-check-tag :checked="filterLowStock" @change="filterLowStock = !filterLowStock; loadProducts()" type="warning" style="font-size:12px">库存紧张</el-check-tag>
-        </el-col>
-      </el-row>
+<!-- 搜索/分类/排序/筛选栏 -->
+<div style="margin-bottom:10px;display:flex;flex-direction:column;gap:8px">
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <el-input v-model="keyword" placeholder="搜索商品名称或条码" clearable @input="loadProducts" style="flex:1;min-width:150px">
+      <template #prefix><el-icon><Search /></el-icon></template>
+    </el-input>
+    <el-select v-model="categoryId" placeholder="选择分类" clearable @change="loadProducts" style="flex:1;min-width:120px">
+      <el-option v-for="c in categories" :key="c.id" :value="c.id">
+        <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+          <span>{{ c.name }}</span>
+          <el-badge :value="c.product_count" :max="999" type="primary" style="margin-left:8px" />
+        </div>
+      </el-option>
+      <template #footer>
+        <el-button text style="width:100%;padding:8px 0" @click="categoryDialogVisible = true">✏️ 编辑分类</el-button>
+      </template>
+    </el-select>
+    <el-select v-model="sortBy" placeholder="排序方式" clearable @change="loadProducts" style="flex:1;min-width:120px">
+      <el-option label="默认顺序" value="" />
+      <el-option label="名称 A→Z" value="name_asc" />
+      <el-option label="名称 Z→A" value="name_desc" />
+      <el-option label="库存从多到少" value="stock_desc" />
+      <el-option label="库存从少到多" value="stock_asc" />
+      <el-option label="售价从高到低" value="price_desc" />
+      <el-option label="售价从低到高" value="price_asc" />
+      <el-option label="最近入库" value="stock_in_desc" />
+      <el-option label="最久未入库" value="stock_in_asc" />
+    </el-select>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <el-check-tag :checked="filterSpecial" @change="filterSpecial = !filterSpecial; loadProducts()" style="font-size:12px">有特价</el-check-tag>
+    <el-check-tag :checked="filterInStock" @change="filterInStock = !filterInStock; loadProducts()" type="success" style="font-size:12px">有库存</el-check-tag>
+    <el-check-tag :checked="filterNoStock" @change="filterNoStock = !filterNoStock; loadProducts()" type="danger" style="font-size:12px">无库存</el-check-tag>
+    <el-check-tag :checked="filterLowStock" @change="filterLowStock = !filterLowStock; loadProducts()" type="warning" style="font-size:12px">库存紧张</el-check-tag>
+  </div>
+</div>
 
-      <!-- 全选/结果统计行 -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <span style="font-size:13px;color:#999">显示 {{ products.length }} / {{ total }} 件</span>
-        <el-button size="small" @click="selectAll">全选当前页 ({{ products.length }})</el-button>
-        <el-button size="small" @click="selectedIds = []" v-if="selectedIds.length > 0">取消全选</el-button>
-        <span v-if="selectedIds.length > 0" style="font-size:13px;color:#409eff;font-weight:bold">已选 {{ selectedIds.length }} 件</span>
-      </div>
+<!-- 全选/结果统计行 -->
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+  <span style="font-size:13px;color:#999">显示 {{ products.length }} / {{ total }} 件</span>
+  <el-button size="small" @click="selectAll">全选当前页 ({{ products.length }})</el-button>
+  <el-button size="small" @click="selectedIds = []" v-if="selectedIds.length > 0">取消全选</el-button>
+  <span v-if="selectedIds.length > 0" style="font-size:13px;color:#409eff;font-weight:bold">已选 {{ selectedIds.length }} 件</span>
+</div>
 
-      <!-- 批量操作栏 -->
-      <div v-if="selectedIds.length > 0" style="margin-bottom:12px;display:flex;align-items:center;gap:10px;background:#e8f4fd;padding:10px 14px;border-radius:8px;flex-wrap:wrap">
-        <span style="font-size:13px;color:#409eff;font-weight:bold">已选 {{ selectedIds.length }} 件商品</span>
-        <el-button size="small" @click="selectedIds = []">取消选择</el-button>
-        <el-button size="small" type="primary" @click="openBatchPrice">批量改售价</el-button>
-        <el-button size="small" type="danger" @click="openBatchSpecial">批量设特价</el-button>
-        <el-button size="small" type="warning" @click="openBatchCategory">批量改分类</el-button>
-      </div>
+<!-- 批量操作栏 -->
+<div v-if="selectedIds.length > 0" style="margin-bottom:12px;display:flex;align-items:center;gap:10px;background:#e8f4fd;padding:10px 14px;border-radius:8px;flex-wrap:wrap">
+  <span style="font-size:13px;color:#409eff;font-weight:bold">已选 {{ selectedIds.length }} 件商品</span>
+  <el-button size="small" @click="selectedIds = []">取消选择</el-button>
+  <el-button size="small" type="primary" @click="openBatchPrice">批量改售价</el-button>
+  <el-button size="small" type="danger" @click="openBatchSpecial">批量设特价</el-button>
+  <el-button size="small" type="warning" @click="openBatchCategory">批量改分类</el-button>
+</div>
 
-      <!-- 商品网格 -->
-      <div v-loading="loading" style="display:flex;flex-wrap:wrap;gap:16px">
+<!-- 商品网格 -->
+<div v-loading="loading" class="product-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
   <div
     v-for="p in products" :key="p.id"
-    :style="`width:180px;border:2px solid ${selectedIds.includes(p.id) ? '#409eff' : '#e4e7ed'};border-radius:8px;overflow:hidden;cursor:pointer;transition:box-shadow 0.2s;position:relative;display:flex;flex-direction:column`"
+    :style="`border:2px solid ${selectedIds.includes(p.id) ? '#409eff' : '#e4e7ed'};border-radius:8px;overflow:hidden;cursor:pointer;transition:box-shadow 0.2s;position:relative;display:flex;flex-direction:column`"
     @mouseenter="e => e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.12)'"
     @mouseleave="e => e.currentTarget.style.boxShadow='none'"
   >
-    <div style="width:180px;height:135px;background:#f5f7fa;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;flex-shrink:0">
-      <div style="position:absolute;top:6px;left:6px;z-index:10" @click.stop="toggleSelect(p.id)">
-        <el-checkbox :model-value="selectedIds.includes(p.id)" />
+    <div style="width:100%;padding-top:75%;background:#f5f7fa;position:relative;flex-shrink:0">
+      <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;overflow:hidden">
+        <div style="position:absolute;top:6px;left:6px;z-index:10" @click.stop="toggleSelect(p.id)">
+          <el-checkbox :model-value="selectedIds.includes(p.id)" />
+        </div>
+        <div v-if="p.category_name" style="position:absolute;top:6px;right:6px;z-index:10;background:rgba(64,158,255,0.85);color:#fff;font-size:10px;padding:2px 6px;border-radius:8px;max-width:75px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="p.category_name">
+          {{ p.category_name }}
+        </div>
+        <img v-if="p.image" :src="BASE_URL+p.image" style="width:100%;height:100%;object-fit:cover;cursor:pointer" @click="openDetail(p)" />
+        <el-icon v-else style="font-size:48px;color:#c0c4cc;cursor:pointer" @click="openDetail(p)"><Picture /></el-icon>
       </div>
-      <div v-if="p.category_name" style="position:absolute;top:6px;right:6px;z-index:10;background:rgba(64,158,255,0.85);color:#fff;font-size:10px;padding:2px 6px;border-radius:8px;max-width:75px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="p.category_name">
-        {{ p.category_name }}
-      </div>
-      <img v-if="p.image" :src="'http://127.0.0.1:8000'+p.image" style="width:100%;height:100%;object-fit:cover;cursor:pointer" @click="openDetail(p)" />
-      <el-icon v-else style="font-size:48px;color:#c0c4cc;cursor:pointer" @click="openDetail(p)"><Picture /></el-icon>
     </div>
     <div style="padding:8px 10px;flex:1;overflow:hidden" @click="openDetail(p)">
       <div style="font-weight:bold;font-size:13px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="p.name">{{ p.name }}</div>
@@ -130,7 +128,7 @@
       <div style="display:flex;gap:24px">
         <div style="width:260px;flex-shrink:0">
           <div style="width:260px;height:195px;background:#f5f7fa;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:12px">
-            <img v-if="detailProduct.image" :src="'http://127.0.0.1:8000'+detailProduct.image" style="width:100%;height:100%;object-fit:cover" />
+            <img v-if="detailProduct.image" :src="BASE_URL+detailProduct.image" style="width:100%;height:100%;object-fit:cover" />
             <el-icon v-else style="font-size:64px;color:#c0c4cc"><Picture /></el-icon>
           </div>
           <el-upload :auto-upload="false" :on-change="handleImageChange" :show-file-list="false" accept="image/*">
@@ -422,7 +420,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Picture } from '@element-plus/icons-vue'
-import request from '../utils/request'
+import request, { BASE_URL } from '../utils/request'
 import axios from 'axios'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
@@ -637,7 +635,7 @@ const submitCrop = () => {
     const formData = new FormData()
     formData.append('file', blob, 'image.jpg')
     const token = localStorage.getItem('token')
-    const res = await axios.post(`http://127.0.0.1:8000/api/products/${uploadingProductId.value}/image`, formData, { headers: { Authorization: `Bearer ${token}` } })
+    const res = await axios.post(`${BASE_URL}/api/products/${uploadingProductId.value}/image`, formData, { headers: { Authorization: `Bearer ${token}` } })
     detailProduct.value.image = res.data.image; ElMessage.success('图片上传成功'); cropperVisible.value = false; loadProducts()
   })
 }

@@ -1,3 +1,4 @@
+import request, { BASE_URL } from '../utils/request'
 <template>
   <div>
     <!-- 分类栏 -->
@@ -61,7 +62,7 @@
 
         <!-- 商品图 -->
         <div class="product-img" @click="openDetail(p)">
-          <img v-if="p.image" :src="'http://127.0.0.1:8000'+p.image" style="width:100%;height:100%;object-fit:cover" />
+          <img v-if="p.image" :src="BASE_URL + p.image" style="width:100%;height:100%;object-fit:cover" />
           <el-icon v-else style="font-size:48px;color:#c3dff7"><Picture /></el-icon>
           <div v-if="p.special_price" style="position:absolute;top:8px;left:8px;background:#f56c6c;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold">{{ t.special }}</div>
           <div v-else-if="p.stock <= 0" style="position:absolute;top:8px;left:8px;background:#909399;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px">{{ t.outOfStock }}</div>
@@ -136,7 +137,7 @@
     <el-dialog v-model="detailVisible" width="min(520px,95vw)" :title="lang === 'es' && detailProduct.name_es ? detailProduct.name_es : detailProduct.name">
       <div style="display:flex;gap:16px;flex-wrap:wrap">
         <div style="width:180px;height:135px;background:#f0f7ff;border-radius:8px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">
-          <img v-if="detailProduct.image" :src="'http://127.0.0.1:8000'+detailProduct.image" style="width:100%;height:100%;object-fit:cover" />
+          <img v-if="detailProduct.image" :src="'http://192.168.0.109:8000'+detailProduct.image" style="width:100%;height:100%;object-fit:cover" />
           <el-icon v-else style="font-size:48px;color:#c3dff7"><Picture /></el-icon>
         </div>
         <div style="flex:1;min-width:160px;font-size:13px;line-height:2">
@@ -184,10 +185,10 @@
 </template>
 
 <script setup>
+import request, { BASE_URL } from '../utils/request'
 import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Picture, Star } from '@element-plus/icons-vue'
-import request from '../utils/request'
 import { useCartStore } from '../stores/cart'
 import { useLang } from '../composables/useLang'
 

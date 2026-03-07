@@ -133,8 +133,7 @@ def get_orders_summary(
 def get_my_orders(request: Request, db: Session = Depends(get_db)):
     from jose import jwt
     from jose.exceptions import JWTError
-    SECRET_KEY = "warehouse-secret-key-2024"
-    ALGORITHM = "HS256"
+    from routers.auth import SECRET_KEY, ALGORITHM
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="未登录")

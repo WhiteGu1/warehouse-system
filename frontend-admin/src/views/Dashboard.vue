@@ -16,7 +16,7 @@
     </el-alert>
 
     <el-row :gutter="20" style="margin-bottom:24px">
-      <el-col :span="6">
+      <el-col :xs="12" :sm="6">
         <el-card shadow="hover" style="cursor:pointer" @click="$router.push('/products')">
           <div style="text-align:center">
             <div style="font-size:32px;color:#409eff;font-weight:bold">{{ stats.products }}</div>
@@ -25,7 +25,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="6">
         <el-card shadow="hover" style="cursor:pointer" @click="$router.push('/customers')">
           <div style="text-align:center">
             <div style="font-size:32px;color:#67c23a;font-weight:bold">{{ stats.supermarkets }}</div>
@@ -34,7 +34,8 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="6">
+        <el-row :gutter="20" style="margin-bottom:24px;row-gap:16px"></el-row>
         <el-card shadow="hover" style="cursor:pointer" @click="pendingOrderDialogVisible = true">
           <div style="text-align:center">
             <div style="font-size:32px;color:#e6a23c;font-weight:bold">{{ stats.pending_orders }}</div>
@@ -43,7 +44,8 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="6">
+        <el-row :gutter="20" style="margin-bottom:24px;row-gap:16px"></el-row>
         <el-card shadow="hover" style="cursor:pointer" @click="lowStockDialogVisible = true">
           <div style="text-align:center">
             <div style="font-size:32px;color:#f56c6c;font-weight:bold">{{ stats.low_stock }}</div>

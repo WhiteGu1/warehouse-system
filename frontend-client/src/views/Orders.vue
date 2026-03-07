@@ -6,27 +6,28 @@
     </div>
 
     <el-card>
-      <el-table :data="orders" stripe>
-        <el-table-column prop="order_no" :label="t.orderNo" min-width="160" />
-        <el-table-column :label="t.orderAmount" width="100">
-          <template #default="{ row }">
-            <span style="color:#409eff;font-weight:bold">${{ row.total_amount }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column :label="t.orderStatus" width="130">
-          <template #default="{ row }">
-            <el-tag :type="statusType(row.status)" size="small">{{ statusText(row.status) || row.status_text }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="tracking_number" :label="t.trackingNo" width="130" />
-        <el-table-column prop="created_at" :label="t.orderTime" width="160" />
-        <el-table-column :label="lang === 'zh' ? '操作' : 'Acción'" width="140">
-          <template #default="{ row }">
-            <el-button size="small" type="primary" plain @click="$router.push(`/order/${row.id}`)">{{ lang === 'zh' ? '详情' : 'Ver' }}</el-button>
-            <el-button size="small" type="danger" plain v-if="row.status === 1" @click="cancelOrder(row)">{{ t.cancelOrder }}</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+<el-table :data="orders" stripe row-style="cursor:pointer" @row-click="(row) => $router.push(`/order/${row.id}`)">
+  <el-table-column prop="order_no" :label="t.orderNo" min-width="150" />
+  <el-table-column :label="t.orderAmount" width="120">
+    <template #default="{ row }">
+      <span style="color:#409eff;font-weight:bold;white-space:nowrap">${{ row.total_amount }}</span>
+    </template>
+  </el-table-column>
+  <el-table-column :label="t.orderStatus" width="130">
+    <template #default="{ row }">
+      <el-tag :type="statusType(row.status)" size="small" style="white-space:nowrap">{{ statusText(row.status) || row.status_text }}</el-tag>
+    </template>
+  </el-table-column>
+  <el-table-column prop="tracking_number" :label="t.trackingNo" min-width="120" show-overflow-tooltip />
+  <el-table-column prop="created_at" :label="t.orderTime" width="155" />
+  <el-table-column v-if="orders.some(o => o.status === 1)" :label="lang === 'zh' ? '操作' : 'Acción'" width="90">
+    <template #default="{ row }">
+      <div @click.stop>
+        <el-button size="small" type="danger" plain v-if="row.status === 1" @click="cancelOrder(row)">{{ t.cancelOrder }}</el-button>
+      </div>
+    </template>
+  </el-table-column>
+</el-table>
       <div v-if="orders.length === 0" style="text-align:center;padding:40px;color:#aaa">
         {{ lang === 'zh' ? '暂无订单' : 'Sin pedidos' }}
       </div>
@@ -60,7 +61,14 @@ const statusText = (status) => {
 }
 
 const loadOrders = async () => {
-  orders.value = await request.get('/orders/my')
+  try {
+    const res = await request.get('/orders/my')
+    console.log('orders res:', res)
+    orders.value = Array.isArray(res) ? res : (res.items || [])
+  } catch (e) {
+    console.log('orders error:', e)
+    console.log('orders error response:', e.response)
+  }
 }
 
 const cancelOrder = async (row) => {

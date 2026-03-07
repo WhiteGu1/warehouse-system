@@ -87,7 +87,7 @@
       </div>
     </el-drawer>
 
-    <main style="max-width:1300px;margin:0 auto;padding:16px 12px">
+<main style="max-width:1300px;margin:0 auto" class="main-content">
       <router-view :search-keyword="activeKeyword" @search-clear="activeKeyword=''" />
     </main>
 
@@ -207,6 +207,25 @@ onMounted(() => {
 </script>
 
 <style scoped>
+:global(body) {
+  overflow-x: hidden;
+}
+:global(html) {
+  overflow-x: hidden;
+}
+.main-content {
+  padding: 16px 12px;
+}
+@media (max-width: 768px) {
+  .main-content {
+    padding: 10px 6px;
+  }
+}
+@media (max-width: 400px) {
+  .main-content {
+    padding: 8px 4px;
+  }
+}
 @media (max-width: 768px) {
   .desktop-nav { display: none !important; }
   .mobile-nav { display: flex !important; }
