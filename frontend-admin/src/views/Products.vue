@@ -32,7 +32,7 @@
           </el-select>
         </el-col>
         <el-col :span="5">
-          <el-select v-model="sortBy" placeholder="排序方式" clearable>
+          <el-select v-model="sortBy" placeholder="排序方式" clearable @change="loadProducts">
             <el-option label="默认顺序" value="" />
             <el-option label="名称 A→Z" value="name_asc" />
             <el-option label="名称 Z→A" value="name_desc" />
@@ -45,17 +45,17 @@
           </el-select>
         </el-col>
         <el-col :span="7" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <el-check-tag :checked="filterSpecial" @change="filterSpecial = !filterSpecial" style="font-size:12px">有特价</el-check-tag>
-          <el-check-tag :checked="filterInStock" @change="filterInStock = !filterInStock" type="success" style="font-size:12px">有库存</el-check-tag>
-          <el-check-tag :checked="filterNoStock" @change="filterNoStock = !filterNoStock" type="danger" style="font-size:12px">无库存</el-check-tag>
-          <el-check-tag :checked="filterLowStock" @change="filterLowStock = !filterLowStock" type="warning" style="font-size:12px">库存紧张</el-check-tag>
+          <el-check-tag :checked="filterSpecial" @change="filterSpecial = !filterSpecial; loadProducts()" style="font-size:12px">有特价</el-check-tag>
+          <el-check-tag :checked="filterInStock" @change="filterInStock = !filterInStock; loadProducts()" type="success" style="font-size:12px">有库存</el-check-tag>
+          <el-check-tag :checked="filterNoStock" @change="filterNoStock = !filterNoStock; loadProducts()" type="danger" style="font-size:12px">无库存</el-check-tag>
+          <el-check-tag :checked="filterLowStock" @change="filterLowStock = !filterLowStock; loadProducts()" type="warning" style="font-size:12px">库存紧张</el-check-tag>
         </el-col>
       </el-row>
 
       <!-- 全选/结果统计行 -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <span style="font-size:13px;color:#999">显示 {{ displayedProducts.length }} / {{ allProducts.length }} 件</span>
-        <el-button size="small" @click="selectAll">全选当前筛选 ({{ displayedProducts.length }})</el-button>
+        <span style="font-size:13px;color:#999">显示 {{ products.length }} / {{ total }} 件</span>
+        <el-button size="small" @click="selectAll">全选当前页 ({{ products.length }})</el-button>
         <el-button size="small" @click="selectedIds = []" v-if="selectedIds.length > 0">取消全选</el-button>
         <span v-if="selectedIds.length > 0" style="font-size:13px;color:#409eff;font-weight:bold">已选 {{ selectedIds.length }} 件</span>
       </div>
@@ -70,48 +70,59 @@
       </div>
 
       <!-- 商品网格 -->
-      <div style="display:flex;flex-wrap:wrap;gap:16px">
-        <div
-          v-for="p in displayedProducts" :key="p.id"
-          :style="`width:200px;border:2px solid ${selectedIds.includes(p.id) ? '#409eff' : '#e4e7ed'};border-radius:8px;overflow:hidden;cursor:pointer;transition:box-shadow 0.2s;position:relative`"
-          @mouseenter="e => e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.12)'"
-          @mouseleave="e => e.currentTarget.style.boxShadow='none'"
-        >
-          <div style="width:200px;height:150px;background:#f5f7fa;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative">
-            <div style="position:absolute;top:6px;left:6px;z-index:10" @click.stop="toggleSelect(p.id)">
-              <el-checkbox :model-value="selectedIds.includes(p.id)" />
-            </div>
-            <div v-if="p.category_name" style="position:absolute;top:6px;right:6px;z-index:10;background:rgba(64,158,255,0.85);color:#fff;font-size:10px;padding:2px 6px;border-radius:8px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="p.category_name">
-              {{ p.category_name }}
-            </div>
-            <img v-if="p.image" :src="'http://127.0.0.1:8000'+p.image" style="width:100%;height:100%;object-fit:cover;cursor:pointer" @click="openDetail(p)" />
-            <el-icon v-else style="font-size:48px;color:#c0c4cc;cursor:pointer" @click="openDetail(p)"><Picture /></el-icon>
-          </div>
-          <div style="padding:10px" @click="openDetail(p)">
-            <div style="font-weight:bold;font-size:13px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="p.name">{{ p.name }}</div>
-            <div v-if="p.name_es" style="font-size:11px;color:#888;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🇪🇸 {{ p.name_es }}</div>
-            <div style="font-size:12px;color:#666">规格：{{ p.spec || '-' }}</div>
-            <div style="font-size:12px;color:#666">货号：{{ p.item_no || p.barcode || '-' }}</div>
-            <div :style="`font-size:12px;font-weight:bold;${p.stock <= 0 ? 'color:#f56c6c' : p.stock < 10 ? 'color:#e6a23c' : 'color:#666'}`">
-              库存：{{ p.stock }}
-              <span v-if="p.stock <= 0" style="font-size:10px">⚠ 无库存</span>
-              <span v-else-if="p.stock < 10" style="font-size:10px">⚠ 紧张</span>
-            </div>
-            <div style="font-size:12px;color:#e6a23c">进价：${{ p.cost_price ?? '-' }}</div>
-            <div style="font-size:12px;color:#67c23a">售价：${{ p.sell_price ?? '-' }}</div>
-            <div v-if="p.special_price" style="font-size:12px;color:#f56c6c;font-weight:bold">
-              特价：${{ p.special_price }}
-              <span v-if="p.sell_price" style="font-size:11px;color:#aaa;font-weight:normal">(-{{ calcDiscount(p.sell_price, p.special_price) }}%)</span>
-            </div>
-            <div v-if="p.last_stock_in" style="font-size:10px;color:#bbb;margin-top:2px">入库：{{ p.last_stock_in.slice(0,10) }}</div>
-          </div>
-          <div style="padding:0 10px 10px">
-            <el-button size="small" type="success" style="width:100%" @click.stop="openStockIn(p)">商品入库</el-button>
-          </div>
-        </div>
+      <div v-loading="loading" style="display:flex;flex-wrap:wrap;gap:16px">
+  <div
+    v-for="p in products" :key="p.id"
+    :style="`width:180px;border:2px solid ${selectedIds.includes(p.id) ? '#409eff' : '#e4e7ed'};border-radius:8px;overflow:hidden;cursor:pointer;transition:box-shadow 0.2s;position:relative;display:flex;flex-direction:column`"
+    @mouseenter="e => e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.12)'"
+    @mouseleave="e => e.currentTarget.style.boxShadow='none'"
+  >
+    <div style="width:180px;height:135px;background:#f5f7fa;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;flex-shrink:0">
+      <div style="position:absolute;top:6px;left:6px;z-index:10" @click.stop="toggleSelect(p.id)">
+        <el-checkbox :model-value="selectedIds.includes(p.id)" />
       </div>
+      <div v-if="p.category_name" style="position:absolute;top:6px;right:6px;z-index:10;background:rgba(64,158,255,0.85);color:#fff;font-size:10px;padding:2px 6px;border-radius:8px;max-width:75px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="p.category_name">
+        {{ p.category_name }}
+      </div>
+      <img v-if="p.image" :src="'http://127.0.0.1:8000'+p.image" style="width:100%;height:100%;object-fit:cover;cursor:pointer" @click="openDetail(p)" />
+      <el-icon v-else style="font-size:48px;color:#c0c4cc;cursor:pointer" @click="openDetail(p)"><Picture /></el-icon>
+    </div>
+    <div style="padding:8px 10px;flex:1;overflow:hidden" @click="openDetail(p)">
+      <div style="font-weight:bold;font-size:13px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="p.name">{{ p.name }}</div>
+      <div v-if="p.name_es" style="font-size:11px;color:#888;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🇪🇸 {{ p.name_es }}</div>
+      <div style="font-size:12px;color:#666">规格：{{ p.spec || '-' }}</div>
+      <div style="font-size:12px;color:#666">货号：{{ p.item_no || p.barcode || '-' }}</div>
+      <div :style="`font-size:12px;font-weight:bold;${p.stock <= 0 ? 'color:#f56c6c' : p.stock < 10 ? 'color:#e6a23c' : 'color:#666'}`">
+        库存：{{ p.stock }}
+        <span v-if="p.stock <= 0" style="font-size:10px">⚠ 无库存</span>
+        <span v-else-if="p.stock < 10" style="font-size:10px">⚠ 紧张</span>
+      </div>
+      <div style="font-size:12px;color:#e6a23c">进价：${{ p.cost_price ?? '-' }}</div>
+      <div style="font-size:12px;color:#67c23a">售价：${{ p.sell_price ?? '-' }}</div>
+      <div v-if="p.special_price" style="font-size:12px;color:#f56c6c;font-weight:bold">
+        特价：${{ p.special_price }}
+        <span v-if="p.sell_price" style="font-size:11px;color:#aaa;font-weight:normal">(-{{ calcDiscount(p.sell_price, p.special_price) }}%)</span>
+      </div>
+      <div v-if="p.last_stock_in" style="font-size:10px;color:#bbb;margin-top:2px">入库：{{ p.last_stock_in.slice(0,10) }}</div>
+    </div>
+    <div style="padding:0 10px 10px;flex-shrink:0">
+      <el-button size="small" type="success" style="width:100%" @click.stop="openStockIn(p)">商品入库</el-button>
+    </div>
+  </div>
+</div>
 
-      <div v-if="displayedProducts.length === 0" style="text-align:center;color:#aaa;padding:40px 0">暂无商品</div>
+      <div v-if="products.length === 0 && !loading" style="text-align:center;color:#aaa;padding:40px 0">暂无商品</div>
+
+      <div style="display:flex;justify-content:center;margin-top:20px">
+        <el-pagination
+          v-model:current-page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          layout="total, prev, pager, next, jumper"
+          background
+          @current-change="fetchProducts"
+        />
+      </div>
     </el-card>
 
     <!-- 商品详情弹窗 -->
@@ -418,7 +429,11 @@ import { saveAs } from 'file-saver'
 import 'vue-cropper/dist/index.css'
 import { VueCropper } from 'vue-cropper'
 
-const allProducts = ref([])   // 后端返回原始数据
+const products = ref([])
+const total = ref(0)
+const currentPage = ref(1)
+const pageSize = 50
+const loading = ref(false)
 const categories = ref([])
 const keyword = ref('')
 const categoryId = ref(null)
@@ -468,38 +483,8 @@ const calcDiscount = (sellPrice, specialPrice) => {
   return ((1 - specialPrice / sellPrice) * 100).toFixed(0)
 }
 
-// 前端筛选+排序后的显示列表
-const displayedProducts = computed(() => {
-  let list = [...allProducts.value]
-
-  // 筛选
-  if (filterSpecial.value) list = list.filter(p => p.special_price)
-  if (filterInStock.value) list = list.filter(p => p.stock > 0)
-  if (filterNoStock.value) list = list.filter(p => p.stock <= 0)
-  if (filterLowStock.value) list = list.filter(p => p.stock > 0 && p.stock < 10)
-
-  // 排序
-  if (sortBy.value === 'name_asc') list.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-  else if (sortBy.value === 'name_desc') list.sort((a, b) => (b.name || '').localeCompare(a.name || ''))
-  else if (sortBy.value === 'stock_desc') list.sort((a, b) => (b.stock || 0) - (a.stock || 0))
-  else if (sortBy.value === 'stock_asc') list.sort((a, b) => (a.stock || 0) - (b.stock || 0))
-  else if (sortBy.value === 'price_desc') list.sort((a, b) => (b.sell_price || 0) - (a.sell_price || 0))
-  else if (sortBy.value === 'price_asc') list.sort((a, b) => (a.sell_price || 0) - (b.sell_price || 0))
-  else if (sortBy.value === 'stock_in_desc') {
-    list.sort((a, b) => {
-      if (!a.last_stock_in && !b.last_stock_in) return 0
-      if (!a.last_stock_in) return 1
-      if (!b.last_stock_in) return -1
-      return b.last_stock_in.localeCompare(a.last_stock_in)
-    })
-  }
-
-
-  return list
-})
-
 const selectedCategoryStats = computed(() => {
-  const selected = allProducts.value.filter(p => selectedIds.value.includes(p.id))
+  const selected = products.value.filter(p => selectedIds.value.includes(p.id))
   const stats = {}
   selected.forEach(p => {
     const name = p.category_name || '未分类'
@@ -508,7 +493,7 @@ const selectedCategoryStats = computed(() => {
   return stats
 })
 
-const selectAll = () => { selectedIds.value = displayedProducts.value.map(p => p.id) }
+const selectAll = () => { selectedIds.value = products.value.map(p => p.id) }
 
 const recalcSellPrice = (val) => {
   if (form.value._margin && val) {
@@ -526,8 +511,60 @@ const openBatchPrice = () => { batchPriceMode.value = 'adjust'; batchAdjustDir.v
 const openBatchSpecial = () => { batchSpecialMode.value = 'percent'; batchSpecialPercent.value = 90; batchSpecialVal.value = 0; batchSpecialVisible.value = true }
 const openBatchCategory = () => { batchCategoryVal.value = null; batchCategoryVisible.value = true }
 
+const buildProductParams = () => {
+  const params = {}
+  if (keyword.value) params.keyword = keyword.value
+  if (categoryId.value) params.category_id = categoryId.value
+  if (sortBy.value) params.sort_by = sortBy.value
+  if (filterSpecial.value) params.filter_special = true
+  if (filterInStock.value) params.filter_in_stock = true
+  if (filterNoStock.value) params.filter_no_stock = true
+  if (filterLowStock.value) params.filter_low_stock = true
+  return params
+}
+
+const loadProducts = async () => {
+  currentPage.value = 1
+  await fetchProducts()
+}
+
+const fetchProducts = async () => {
+  loading.value = true
+  try {
+    const res = await request.get('/products/', {
+      params: { ...buildProductParams(), page: currentPage.value, page_size: pageSize }
+    })
+    products.value = res.items
+    total.value = res.total
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadCategories = async () => { categories.value = await request.get('/categories/') }
+
+const exportProducts = async () => {
+  const res = await request.get('/products/', {
+    params: { ...buildProductParams(), page: 1, page_size: 99999 }
+  })
+  const data = res.items.map(p => ({
+    '商品名称': p.name, '西语名称': p.name_es || '', '条码': p.barcode || '',
+    '货号': p.item_no || '', '分类': p.category_name || '', '规格': p.spec || '',
+    '每包数量': p.middle_pack ?? '', '每件数量': p.piece ?? '',
+    '进价': p.cost_price ?? '', '售价': p.sell_price ?? '',
+    '特价': p.special_price ?? '',
+    '折扣': p.special_price && p.sell_price ? `-${calcDiscount(p.sell_price, p.special_price)}%` : '',
+    '库存': p.stock, '最后入库': p.last_stock_in || '', '备注': p.remark || ''
+  }))
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, '商品列表')
+  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
+  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `商品列表_${new Date().toLocaleDateString()}.xlsx`)
+}
+
 const submitBatchPrice = async () => {
-  const selected = allProducts.value.filter(p => selectedIds.value.includes(p.id))
+  const selected = products.value.filter(p => selectedIds.value.includes(p.id))
   let updated = 0
   for (const p of selected) {
     let newPrice = null
@@ -544,7 +581,7 @@ const submitBatchPrice = async () => {
 }
 
 const submitBatchSpecial = async () => {
-  const selected = allProducts.value.filter(p => selectedIds.value.includes(p.id))
+  const selected = products.value.filter(p => selectedIds.value.includes(p.id))
   let updated = 0
   for (const p of selected) {
     let specialVal = null
@@ -561,32 +598,6 @@ const submitBatchCategory = async () => {
   for (const id of selectedIds.value) await request.put(`/products/${id}`, { category_id: batchCategoryVal.value })
   ElMessage.success(`已更新 ${selectedIds.value.length} 件商品分类`)
   batchCategoryVisible.value = false; selectedIds.value = []; loadProducts()
-}
-
-const loadProducts = async () => {
-  const params = {}
-  if (keyword.value) params.keyword = keyword.value
-  if (categoryId.value) params.category_id = categoryId.value
-  allProducts.value = await request.get('/products/', { params })
-}
-
-const loadCategories = async () => { categories.value = await request.get('/categories/') }
-
-const exportProducts = () => {
-  const data = displayedProducts.value.map(p => ({
-    '商品名称': p.name, '西语名称': p.name_es || '', '条码': p.barcode || '',
-    '货号': p.item_no || '', '分类': p.category_name || '', '规格': p.spec || '',
-    '每包数量': p.middle_pack ?? '', '每件数量': p.piece ?? '',
-    '进价': p.cost_price ?? '', '售价': p.sell_price ?? '',
-    '特价': p.special_price ?? '',
-    '折扣': p.special_price && p.sell_price ? `-${calcDiscount(p.sell_price, p.special_price)}%` : '',
-    '库存': p.stock, '最后入库': p.last_stock_in || '', '备注': p.remark || ''
-  }))
-  const ws = XLSX.utils.json_to_sheet(data)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, '商品列表')
-  const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
-  saveAs(new Blob([buf], { type: 'application/octet-stream' }), `商品列表_${new Date().toLocaleDateString()}.xlsx`)
 }
 
 const addCategory = async () => {

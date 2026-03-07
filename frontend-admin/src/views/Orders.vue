@@ -35,26 +35,31 @@
         />
       </div>
 
-      <el-table :data="orders" stripe v-loading="loading">
-        <el-table-column prop="order_no" label="订单号" width="180" />
-        <el-table-column prop="supermarket_name" label="客户" width="130" />
-        <el-table-column label="金额" width="100">
+      <el-table
+        :data="orders" stripe v-loading="loading" style="width:100%"
+        row-style="cursor:pointer"
+        @row-click="viewDetail"
+      >
+        <el-table-column prop="order_no" label="订单号" min-width="165" />
+        <el-table-column prop="supermarket_name" label="客户" min-width="100" />
+        <el-table-column label="金额" min-width="110">
           <template #default="{ row }">
-            <span style="color:#409eff;font-weight:bold">${{ row.total_amount }}</span>
+            <span style="color:#409eff;font-weight:bold;white-space:nowrap">${{ row.total_amount }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="130">
+        <el-table-column label="状态" min-width="120">
           <template #default="{ row }">
-            <el-tag :type="statusType(row.status)">{{ row.status_text }}</el-tag>
+            <el-tag :type="statusType(row.status)" style="white-space:nowrap">{{ row.status_text }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="tracking_number" label="物流单号" width="130" />
-        <el-table-column prop="created_at" label="下单时间" width="160" />
-        <el-table-column label="操作" width="200">
+        <el-table-column prop="tracking_number" label="物流单号" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="created_at" label="下单时间" min-width="155" />
+        <el-table-column label="操作" min-width="180" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="viewDetail(row)">详情</el-button>
-            <el-button size="small" type="success" @click="printInvoice(row)">打印</el-button>
-            <el-button size="small" type="primary" @click="openUpdateStatus(row)" v-if="row.status >= 1 && row.status <= 4">更新状态</el-button>
+            <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap" @click.stop>
+              <el-button size="small" type="success" @click="printInvoice(row)">打印</el-button>
+              <el-button size="small" type="primary" @click="openUpdateStatus(row)" v-if="row.status >= 1 && row.status <= 4">更新状态</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -433,7 +438,10 @@ const fetchOrders = async () => {
 }
 
 const loadCustomers = async () => { customers.value = await request.get('/customers/') }
-const loadProducts = async () => { products.value = await request.get('/products/') }
+const loadProducts = async () => {
+  const res = await request.get('/products/', { params: { page: 1, page_size: 99999 } })
+  products.value = res.items || []
+}
 
 const onCustomerChange = (id) => {
   const c = customers.value.find(x => x.id === id)

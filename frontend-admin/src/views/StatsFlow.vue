@@ -30,10 +30,10 @@
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span>流水明细</span>
           <div style="display:flex;gap:16px">
-            <span style="color:#67c23a;font-weight:bold">销售收入：¥{{ flowData.total_sales }}</span>
-            <span style="color:#f56c6c;font-weight:bold">入库支出：¥{{ flowData.total_cost }}</span>
+            <span style="color:#67c23a;font-weight:bold">销售收入：${{ flowData.total_sales }}</span>
+            <span style="color:#f56c6c;font-weight:bold">入库支出：${{ flowData.total_cost }}</span>
             <span :style="flowData.profit >= 0 ? 'color:#67c23a;font-weight:bold' : 'color:#f56c6c;font-weight:bold'">
-              {{ flowData.profit >= 0 ? '盈利' : '亏损' }}：¥{{ Math.abs(flowData.profit) }}
+              {{ flowData.profit >= 0 ? '盈利' : '亏损' }}：${{ Math.abs(flowData.profit) }}
             </span>
           </div>
         </div>
@@ -48,12 +48,12 @@
         <el-table-column prop="product_name" label="商品名称" />
         <el-table-column prop="quantity" label="数量" width="80" />
         <el-table-column prop="unit_price" label="单价" width="90">
-          <template #default="{ row }">¥{{ row.unit_price }}</template>
+          <template #default="{ row }">${{ row.unit_price }}</template>
         </el-table-column>
         <el-table-column label="金额" width="110">
           <template #default="{ row }">
             <span :style="row.type === '销售' ? 'color:#67c23a;font-weight:bold' : 'color:#f56c6c'">
-              {{ row.type === '销售' ? '+' : '-' }}¥{{ row.amount }}
+              {{ row.type === '销售' ? '+' : '-' }}${{ row.amount }}
             </span>
           </template>
         </el-table-column>

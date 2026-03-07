@@ -54,6 +54,13 @@ class StockInAdd(BaseModel):
 def get_products(
     keyword: Optional[str] = None,
     category_id: Optional[int] = None,
+    sort_by: Optional[str] = None,
+    filter_special: Optional[bool] = None,
+    filter_in_stock: Optional[bool] = None,
+    filter_no_stock: Optional[bool] = None,
+    filter_low_stock: Optional[bool] = None,
+    page: int = 1,
+    page_size: int = 50,
     db: Session = Depends(get_db)
 ):
     query = db.query(Product).filter(Product.is_active == 1)
@@ -63,7 +70,50 @@ def get_products(
         )
     if category_id:
         query = query.filter(Product.category_id == category_id)
-    products = query.all()
+    if filter_special:
+        query = query.filter(Product.special_price != None)
+    if filter_in_stock:
+        query = query.filter(Product.stock > 0)
+    if filter_no_stock:
+        query = query.filter(Product.stock <= 0)
+    if filter_low_stock:
+        query = query.filter(Product.stock > 0, Product.stock < 10)
+
+    # 排序
+    if sort_by == 'name_asc':
+        query = query.order_by(Product.name.asc())
+    elif sort_by == 'name_desc':
+        query = query.order_by(Product.name.desc())
+    elif sort_by == 'stock_desc':
+        query = query.order_by(Product.stock.desc())
+    elif sort_by == 'stock_asc':
+        query = query.order_by(Product.stock.asc())
+    elif sort_by == 'price_desc':
+        query = query.order_by(Product.sell_price.desc())
+    elif sort_by == 'price_asc':
+        query = query.order_by(Product.sell_price.asc())
+    elif sort_by in ('stock_in_desc', 'stock_in_asc'):
+        pass  # 需要 join，下面单独处理
+    else:
+        query = query.order_by(Product.id.desc())
+
+    total = query.count()
+
+    # last_stock_in 排序需要子查询
+    if sort_by in ('stock_in_desc', 'stock_in_asc'):
+        sub = (
+            db.query(StockIn.product_id, func.max(StockIn.created_at).label("last_in"))
+            .filter(StockIn.source.in_(['manual_new', 'manual_add', 'import']))
+            .group_by(StockIn.product_id)
+            .subquery()
+        )
+        query = query.outerjoin(sub, Product.id == sub.c.product_id)
+        if sort_by == 'stock_in_desc':
+            query = query.order_by(sub.c.last_in.desc().nullslast())
+        else:
+            query = query.order_by(sub.c.last_in.asc().nullsfirst())
+
+    products = query.offset((page - 1) * page_size).limit(page_size).all()
 
     # 批量查询每个商品最后入库时间，只计算正常入库（排除退款/取消）
     last_stockin_map = {}
@@ -106,7 +156,7 @@ def get_products(
             "last_stock_in": last_in.strftime("%Y-%m-%d %H:%M:%S") if last_in else None,
             "created_at": p.created_at.strftime("%Y-%m-%d %H:%M:%S") if p.created_at else None,
         })
-    return result
+    return {"total": total, "items": result}
 
 @router.get("/{product_id}/stock-history")
 def get_stock_history(product_id: int, db: Session = Depends(get_db)):
@@ -167,10 +217,13 @@ def stockin_product(product_id: int, data: StockInAdd, db: Session = Depends(get
 
 @router.post("/{product_id}/image")
 async def upload_image(product_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    allowed = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed:
+        raise HTTPException(status_code=400, detail="只允许上传图片文件（jpg/png/gif/webp）")
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="商品不存在")
-    ext = os.path.splitext(file.filename)[1]
     filename = f"{uuid.uuid4()}{ext}"
     filepath = os.path.join(UPLOAD_DIR, filename)
     with open(filepath, "wb") as f:

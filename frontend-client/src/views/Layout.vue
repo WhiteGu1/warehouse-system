@@ -9,7 +9,6 @@
         <div style="font-size:22px;font-weight:800;color:#409eff;letter-spacing:2px;flex-shrink:0;cursor:pointer" @click="$router.push('/')">
           {{ t.appName }}
         </div>
-        <!-- 搜索框 -->
         <div style="flex:1;min-width:0">
           <el-autocomplete
             v-model="searchKeyword"
@@ -37,7 +36,6 @@
           </el-autocomplete>
         </div>
 
-        <!-- 桌面端按钮组 -->
         <div class="desktop-nav" style="display:flex;align-items:center;gap:8px;flex-shrink:0">
           <el-button size="small" round @click="switchLang" style="font-weight:bold;min-width:48px">
             {{ lang === 'zh' ? 'ES' : '中文' }}
@@ -64,7 +62,6 @@
           </el-dropdown>
         </div>
 
-        <!-- 移动端右侧 -->
         <div class="mobile-nav" style="display:none;align-items:center;gap:6px;flex-shrink:0">
           <el-badge :value="cartCount" :hidden="cartCount === 0" type="danger">
             <el-button :icon="ShoppingCart" circle size="small" @click="$router.push('/cart')" />
@@ -74,7 +71,6 @@
       </div>
     </header>
 
-    <!-- 移动端抽屉菜单 -->
     <el-drawer v-model="mobileMenuVisible" direction="rtl" size="70%" :with-header="false">
       <div style="padding:20px">
         <div style="font-size:18px;font-weight:800;color:#409eff;margin-bottom:24px">{{ t.appName }}</div>
@@ -95,7 +91,6 @@
       <router-view :search-keyword="activeKeyword" @search-clear="activeKeyword=''" />
     </main>
 
-    <!-- 修改密码弹窗 -->
     <el-dialog v-model="pwdDialogVisible" :title="t.changePassword" width="min(380px, 92vw)">
       <el-form :model="pwdForm" label-width="80px">
         <el-form-item :label="t.oldPassword">

@@ -66,7 +66,6 @@
           <div v-if="p.special_price" style="position:absolute;top:8px;left:8px;background:#f56c6c;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:bold">{{ t.special }}</div>
           <div v-else-if="p.stock <= 0" style="position:absolute;top:8px;left:8px;background:#909399;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px">{{ t.outOfStock }}</div>
           <div v-else-if="p.stock < 10" style="position:absolute;top:8px;left:8px;background:#e6a23c;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px">{{ t.lowStock }}</div>
-          <!-- 新商品标签 -->
           <div v-if="isNewProduct(p)" style="position:absolute;bottom:8px;left:8px;background:#fa8c16;color:#fff;font-size:10px;padding:1px 6px;border-radius:8px;font-weight:bold">🆕 NEW</div>
         </div>
 
@@ -80,7 +79,6 @@
           <div style="font-size:11px;color:#777;margin-bottom:2px;background:#f5f7fa;border-radius:4px;padding:2px 6px;display:inline-block">
             bulto: {{ p.piece || 1 }} | paquete: {{ p.middle_pack || 1 }}
           </div>
-          <!-- 最后入库时间 -->
           <div v-if="p.last_stock_in" style="font-size:10px;color:#bbb;margin-top:2px">
             {{ t.lastStockIn }}：{{ p.last_stock_in.slice(0,10) }}
           </div>
@@ -216,7 +214,6 @@ const favorites = ref(JSON.parse(localStorage.getItem('favorites') || '[]'))
 const currentPage = ref(1)
 const pageSize = 50
 
-// 近2个月判断（用 created_at 商品创建时间）
 const twoMonthsAgo = new Date()
 twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2)
 
@@ -234,7 +231,7 @@ const toggleFav = (p) => {
 }
 
 const filteredProducts = computed(() => {
-  let list = products.value
+  let list = [...products.value]
   if (selectedCategory.value) list = list.filter(p => p.category_id === selectedCategory.value)
   if (props.searchKeyword) {
     const kw = props.searchKeyword.toLowerCase()
@@ -282,9 +279,11 @@ const cartMsg = (result) => {
 const cartPrice = (p) => p.special_price ? p.special_price : p.sell_price
 
 const loadProducts = async () => {
-  products.value = await request.get('/products/')
+  const res = await request.get('/products/', { params: { page: 1, page_size: 99999 } })
+  products.value = res.items || []
   products.value.forEach(p => { qtyMap.value[p.id] = p.middle_pack || 1 })
 }
+
 const loadCategories = async () => { categories.value = await request.get('/categories/') }
 
 const addToCart = (p) => {
@@ -316,10 +315,12 @@ const confirmQtyEdit = () => {
   ElMessage.success(val === 0 ? t.value.uncollected : t.value.addedToCart)
   qtyEditVisible.value = false
 }
+
 onMounted(() => {
   const u = localStorage.getItem('client_user')
   if (u) discount.value = JSON.parse(u).discount ?? 1.0
-  loadProducts(); loadCategories()
+  loadProducts()
+  loadCategories()
 })
 </script>
 

@@ -6,11 +6,14 @@ from models import Admin, Supermarket
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+limiter = Limiter(key_func=get_remote_address)
 
-SECRET_KEY = "warehouse-secret-key-2024"
+SECRET_KEY = "xK9#mP2$vL8@n”5&wR3!jT6^uY+*o《4!hG7@dF0$bN5^cM2"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
@@ -28,17 +31,19 @@ def create_token(data: dict):
     return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
 
 @router.post("/admin/login")
-def admin_login(request: LoginRequest, db: Session = Depends(get_db)):
-    admin = db.query(Admin).filter(Admin.username == request.username).first()
-    if not admin or not pwd_context.verify(request.password, admin.password):
+@limiter.limit("10/minute")
+def admin_login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
+    admin = db.query(Admin).filter(Admin.username == data.username).first()
+    if not admin or not pwd_context.verify(data.password, admin.password):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     token = create_token({"sub": str(admin.id), "role": "admin"})
     return {"token": token, "name": admin.name, "role": "admin"}
 
 @router.post("/supermarket/login")
-def supermarket_login(request: LoginRequest, db: Session = Depends(get_db)):
-    market = db.query(Supermarket).filter(Supermarket.username == request.username).first()
-    if not market or not pwd_context.verify(request.password, market.password):
+@limiter.limit("10/minute")
+def supermarket_login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
+    market = db.query(Supermarket).filter(Supermarket.username == data.username).first()
+    if not market or not pwd_context.verify(data.password, market.password):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     if not market.is_active:
         raise HTTPException(status_code=403, detail="账号已被禁用")
@@ -46,7 +51,8 @@ def supermarket_login(request: LoginRequest, db: Session = Depends(get_db)):
     return {"token": token, "name": market.name, "role": "supermarket"}
 
 @router.post("/client-login")
-def client_login(data: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def client_login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
     customer = db.query(Supermarket).filter(Supermarket.username == data.username).first()
     if not customer or not pwd_context.verify(data.password, customer.password):
         raise HTTPException(status_code=401, detail="账号或密码错误")
@@ -66,10 +72,10 @@ def client_login(data: LoginRequest, db: Session = Depends(get_db)):
 @router.post("/client-change-password")
 def client_change_password(data: ChangePasswordRequest, request: Request, db: Session = Depends(get_db)):
     from jose.exceptions import JWTError
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="未登录")
-    token = auth.split(" ")[1]
+    token = auth_header.split(" ")[1]
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         customer_id = int(payload.get("sub"))
