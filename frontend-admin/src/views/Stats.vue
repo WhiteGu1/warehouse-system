@@ -1,8 +1,8 @@
 <template>
   <div>
     <h2 style="margin-bottom:20px">统计分析</h2>
-    <el-row :gutter="20">
-      <el-col :span="8">
+    <el-row :gutter="20" style="row-gap:16px">
+      <el-col :xs="24" :sm="8">
         <el-card
           shadow="hover"
           style="cursor:pointer;text-align:center;padding:20px 0"
@@ -13,7 +13,7 @@
           <div style="color:#999;font-size:13px">查看入库支出与销售收入的流水明细，分析整体盈亏情况</div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :xs="24" :sm="8">
         <el-card
           shadow="hover"
           style="cursor:pointer;text-align:center;padding:20px 0"

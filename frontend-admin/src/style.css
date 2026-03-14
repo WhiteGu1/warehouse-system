@@ -12,7 +12,6 @@ body, html {
   padding: 12px !important;
 }
 
-/* 让所有页面根元素撑满 */
 .el-main > .el-card {
   min-height: calc(100vh - 84px);
 }
@@ -20,8 +19,44 @@ body, html {
 .el-main > div {
   min-height: calc(100vh - 84px);
 }
+
 @media (max-width: 768px) {
   .product-grid {
     grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .desktop-table,
+  .desktop-table.el-table {
+    display: none !important;
+  }
+  .desktop-pagination,
+  .desktop-pagination.el-pagination {
+    display: none !important;
+  }
+  .mobile-list {
+    display: block !important;
+    min-height: unset !important;
+  }
+  .mobile-pagination {
+    display: flex !important;
+    min-height: unset !important;
+  }
+  .el-pagination {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    overflow: visible !important;
+  }
+  .el-pagination .el-pagination__jump {
+    display: none !important;
+  }
+  .el-pagination .el-pagination__total {
+    display: none !important;
+  }
+  .el-pagination__sizes {
+    display: none !important;
+  }
+  .el-pagination .btn-prev,
+  .el-pagination .btn-next,
+  .el-pagination .el-pager {
+    display: flex !important;
   }
 }

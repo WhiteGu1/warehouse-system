@@ -8,7 +8,8 @@
         </div>
       </template>
 
-      <el-table :data="customers" stripe>
+      <!-- PC端表格 -->
+      <el-table v-if="!isMobile" :data="customers" stripe>
         <el-table-column prop="name" label="客户名称" />
         <el-table-column prop="contact_person" label="联系人" width="100" />
         <el-table-column prop="phone" label="电话" width="130" />
@@ -38,6 +39,35 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 手机端卡片列表 -->
+      <div v-if="isMobile">
+        <div
+          v-for="row in customers" :key="row.id"
+          style="border:1px solid #e4e7ed;border-radius:8px;padding:12px;margin-bottom:10px;background:#fff"
+        >
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-weight:bold;font-size:15px">{{ row.name }}</span>
+            <div style="display:flex;gap:4px">
+              <el-tag v-if="row.discount < 1" type="warning" size="small">{{ (row.discount * 100).toFixed(0) }}折</el-tag>
+              <el-tag :type="row.is_active ? 'success' : 'danger'" size="small">{{ row.is_active ? '正常' : '禁用' }}</el-tag>
+            </div>
+          </div>
+          <div style="font-size:13px;color:#666;margin-bottom:2px" v-if="row.contact_person">联系人：{{ row.contact_person }}</div>
+          <div style="font-size:13px;color:#666;margin-bottom:2px" v-if="row.phone">电话：{{ row.phone }}</div>
+          <div style="font-size:13px;color:#666;margin-bottom:2px" v-if="row.address">地址：{{ row.address }}</div>
+          <div style="font-size:13px;color:#666;margin-bottom:8px" v-if="row.username">账号：{{ row.username }}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <el-button size="small" @click="openEdit(row)">编辑</el-button>
+            <el-button size="small" type="info" @click="openStats(row)">统计</el-button>
+            <el-button size="small" type="warning" @click="resetPassword(row.id)">重置密码</el-button>
+            <el-button size="small" :type="row.is_active ? 'danger' : 'success'" @click="toggleStatus(row)">
+              {{ row.is_active ? '禁用' : '启用' }}
+            </el-button>
+          </div>
+        </div>
+        <div v-if="customers.length === 0" style="text-align:center;color:#aaa;padding:40px 0">暂无客户</div>
+      </div>
     </el-card>
 
     <!-- 新增/编辑弹窗 -->
@@ -78,22 +108,30 @@
       <div v-if="statsLoading" style="text-align:center;padding:40px;color:#aaa">加载中...</div>
       <div v-else>
         <!-- 概览卡片 -->
-        <div style="display:flex;gap:12px;margin-bottom:20px">
-          <div style="flex:1;background:linear-gradient(135deg,#e8f4fd,#c3dff7);border-radius:10px;padding:16px;text-align:center">
+        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px;background:linear-gradient(135deg,#e8f4fd,#c3dff7);border-radius:10px;padding:16px;text-align:center">
             <div style="font-size:13px;color:#666;margin-bottom:6px">累计订单</div>
             <div style="font-size:28px;font-weight:bold;color:#409eff">{{ statsData.total_orders }}</div>
           </div>
-          <div style="flex:1;background:linear-gradient(135deg,#f0f9eb,#d4edda);border-radius:10px;padding:16px;text-align:center">
-            <div style="font-size:13px;color:#666;margin-bottom:6px">累计消费</div>
+          <div style="flex:1;min-width:120px;background:linear-gradient(135deg,#f0f9eb,#d4edda);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:13px;color:#666;margin-bottom:6px">已付款金额</div>
             <div style="font-size:28px;font-weight:bold;color:#67c23a">${{ statsData.total_amount }}</div>
           </div>
-          <div style="flex:1;background:linear-gradient(135deg,#fdf6ec,#fde8c8);border-radius:10px;padding:16px;text-align:center">
+          <div style="flex:1;min-width:120px;background:linear-gradient(135deg,#fdf6ec,#fde8c8);border-radius:10px;padding:16px;text-align:center">
             <div style="font-size:13px;color:#666;margin-bottom:6px">平均客单价</div>
             <div style="font-size:28px;font-weight:bold;color:#e6a23c">${{ statsData.avg_amount }}</div>
           </div>
-          <div style="flex:1;background:linear-gradient(135deg,#fef0f0,#fdd);border-radius:10px;padding:16px;text-align:center">
+          <div style="flex:1;min-width:120px;background:linear-gradient(135deg,#fef0f0,#fdd);border-radius:10px;padding:16px;text-align:center">
             <div style="font-size:13px;color:#666;margin-bottom:6px">完成订单</div>
             <div style="font-size:28px;font-weight:bold;color:#f56c6c">{{ statsData.completed_orders }}</div>
+          </div>
+          <div style="flex:1;min-width:120px;background:linear-gradient(135deg,#f5f0ff,#e8d5f5);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:13px;color:#666;margin-bottom:6px">未完成订单</div>
+            <div style="font-size:28px;font-weight:bold;color:#9b59b6">{{ statsData.pending_orders }}</div>
+          </div>
+          <div style="flex:1;min-width:120px;background:linear-gradient(135deg,#fff8e1,#ffecb3);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:13px;color:#666;margin-bottom:6px">欠款金额</div>
+            <div style="font-size:28px;font-weight:bold;color:#e67e22">${{ statsData.pending_amount }}</div>
           </div>
         </div>
 
@@ -123,9 +161,7 @@
         </el-table>
 
         <!-- 常购商品 Top10 -->
-        <div style="font-weight:bold;font-size:14px;margin:16px 0 10px;color:#333">
-          常购商品 Top 10
-        </div>
+        <div style="font-weight:bold;font-size:14px;margin:16px 0 10px;color:#333">常购商品 Top 10</div>
         <el-table :data="statsData.top_products" size="small" max-height="220" stripe>
           <el-table-column type="index" label="#" width="40" />
           <el-table-column prop="product_name" label="商品名称" />
@@ -141,9 +177,7 @@
             </template>
           </el-table-column>
           <el-table-column label="订单次数" width="80" align="center">
-            <template #default="{ row }">
-              {{ row.order_count }} 次
-            </template>
+            <template #default="{ row }">{{ row.order_count }} 次</template>
           </el-table-column>
         </el-table>
       </div>
@@ -173,8 +207,11 @@ const statsLoading = ref(false)
 const statsCustomer = ref({})
 const statsData = ref({
   total_orders: 0, total_amount: 0, avg_amount: 0, completed_orders: 0,
+  pending_orders: 0, pending_amount: 0,
   recent_orders: [], top_products: []
 })
+const isMobile = ref(window.innerWidth <= 768)
+window.addEventListener('resize', () => { isMobile.value = window.innerWidth <= 768 })
 
 const discountOptions = [
   { label: '无折扣', value: 1.0 },
@@ -246,26 +283,36 @@ const openStats = async (row) => {
   statsVisible.value = true
   statsLoading.value = true
   try {
-    // 获取该客户所有订单
-    const orders = await request.get('/orders/', { params: { supermarket_id: row.id } })
-    const validOrders = orders.filter(o => o.status !== 6 && o.status !== 7)
-    const total_orders = orders.length
-    const completed_orders = orders.filter(o => o.status === 5).length
-    const total_amount = validOrders.reduce((s, o) => s + parseFloat(o.total_amount || 0), 0).toFixed(2)
-    const avg_amount = total_orders > 0 ? (parseFloat(total_amount) / total_orders).toFixed(2) : '0.00'
+    const res = await request.get('/orders/', { params: { supermarket_id: row.id, page: 1, page_size: 99999 } })
+    const orders = res.items || []
 
-    // 最近20笔
+    const completedOrders = orders.filter(o => o.status === 5)
+    const pendingOrders = orders.filter(o => o.status !== 5 && o.status !== 6 && o.status !== 7)
+    const activeOrders = orders.filter(o => o.status !== 6 && o.status !== 7)
+
+    const total_orders = orders.length
+    const completed_orders = completedOrders.length
+    const pending_orders = pendingOrders.length
+
+    // 只统计已完成订单金额
+    const total_amount = completedOrders
+      .reduce((s, o) => s + parseFloat(o.total_amount || 0), 0).toFixed(2)
+    const avg_amount = completed_orders > 0
+      ? (parseFloat(total_amount) / completed_orders).toFixed(2) : '0.00'
+
+    // 未完成订单欠款
+    const pending_amount = pendingOrders
+      .reduce((s, o) => s + parseFloat(o.total_amount || 0), 0).toFixed(2)
+
     const recent_orders = [...orders]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 20)
 
-    // 常购商品：拉取每笔订单明细（最近50笔）
     const productMap = {}
-    const recentForItems = [...orders]
+    const recentForItems = [...activeOrders]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 50)
     for (const o of recentForItems) {
-      if (o.status === 6 || o.status === 7) continue
       try {
         const detail = await request.get(`/orders/${o.id}`)
         if (detail.items) {
@@ -290,7 +337,10 @@ const openStats = async (row) => {
       .slice(0, 10)
       .map(p => ({ ...p, total_amount: p.total_amount.toFixed(2) }))
 
-    statsData.value = { total_orders, total_amount, avg_amount, completed_orders, recent_orders, top_products }
+    statsData.value = {
+      total_orders, total_amount, avg_amount, completed_orders,
+      pending_orders, pending_amount, recent_orders, top_products
+    }
   } catch (e) {
     ElMessage.error('加载失败')
   } finally {
@@ -305,40 +355,28 @@ const viewOrder = (id) => {
 
 const exportCustomerStats = () => {
   const wb = XLSX.utils.book_new()
-
-  // 概览
   const overview = [{
     '客户名称': statsCustomer.value.name,
     '累计订单': statsData.value.total_orders,
-    '累计消费': statsData.value.total_amount,
+    '已付款金额': statsData.value.total_amount,
     '平均客单价': statsData.value.avg_amount,
-    '完成订单': statsData.value.completed_orders
+    '完成订单': statsData.value.completed_orders,
+    '未完成订单': statsData.value.pending_orders,
+    '欠款金额': statsData.value.pending_amount
   }]
   const ws1 = XLSX.utils.json_to_sheet(overview)
   XLSX.utils.book_append_sheet(wb, ws1, '概览')
-
-  // 最近订单
   const ordersData = statsData.value.recent_orders.map(o => ({
-    '订单号': o.order_no,
-    '金额': o.total_amount,
-    '状态': o.status_text,
-    '下单时间': o.created_at
+    '订单号': o.order_no, '金额': o.total_amount, '状态': o.status_text, '下单时间': o.created_at
   }))
   const ws2 = XLSX.utils.json_to_sheet(ordersData)
   XLSX.utils.book_append_sheet(wb, ws2, '最近订单')
-
-  // 常购商品
   const productsData = statsData.value.top_products.map((p, i) => ({
-    '排名': i + 1,
-    '商品名称': p.product_name,
-    '条码': p.product_barcode,
-    '累计购买数量': p.total_qty,
-    '累计金额': p.total_amount,
-    '订单次数': p.order_count
+    '排名': i + 1, '商品名称': p.product_name, '条码': p.product_barcode,
+    '累计购买数量': p.total_qty, '累计金额': p.total_amount, '订单次数': p.order_count
   }))
   const ws3 = XLSX.utils.json_to_sheet(productsData)
   XLSX.utils.book_append_sheet(wb, ws3, '常购商品')
-
   const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
   saveAs(new Blob([buf], { type: 'application/octet-stream' }), `${statsCustomer.value.name}_统计_${new Date().toLocaleDateString()}.xlsx`)
 }

@@ -30,14 +30,16 @@
       <div v-if="productStats.length === 0" style="text-align:center;color:#999;padding:40px">
         该时间段内无商品出入库记录
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:16px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
         <div
           v-for="p in productStats" :key="p.id"
-          style="width:220px;border:1px solid #e4e7ed;border-radius:8px;overflow:hidden"
+          style="border:1px solid #e4e7ed;border-radius:8px;overflow:hidden"
         >
-          <div style="width:220px;height:165px;background:#f5f7fa;display:flex;align-items:center;justify-content:center;overflow:hidden">
-            <img v-if="p.image" :src="'http://127.0.0.1:8000'+p.image" style="width:100%;height:100%;object-fit:cover" />
-            <el-icon v-else style="font-size:48px;color:#c0c4cc"><Picture /></el-icon>
+          <div style="width:100%;padding-top:75%;position:relative;background:#f5f7fa">
+            <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;overflow:hidden">
+              <img v-if="p.image" :src="BASE_URL+p.image" style="width:100%;height:100%;object-fit:cover" />
+              <el-icon v-else style="font-size:48px;color:#c0c4cc"><Picture /></el-icon>
+            </div>
           </div>
           <div style="padding:10px">
             <div style="font-weight:bold;font-size:13px;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" :title="p.name">{{ p.name }}</div>
@@ -47,7 +49,7 @@
             <div style="font-size:12px;color:#f56c6c">入库：{{ p.total_in_qty }}件 / ${{ p.total_in_cost }}</div>
             <div style="font-size:12px;color:#67c23a">销售：{{ p.total_out_qty }}件 / ${{ p.total_out_sales }}</div>
             <div :style="p.profit >= 0 ? 'font-size:12px;font-weight:bold;color:#409eff' : 'font-size:12px;font-weight:bold;color:#f56c6c'">
-              {{ p.profit >= 0 ? '盈利' : '亏损' }}：¥{{ Math.abs(p.profit) }}
+              {{ p.profit >= 0 ? '盈利' : '亏损' }}：${{ Math.abs(p.profit) }}
             </div>
             <el-divider style="margin:6px 0" />
             <div style="font-size:11px;color:#aaa">最后入库：{{ p.last_in || '-' }}</div>
@@ -62,7 +64,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ArrowLeft, Picture } from '@element-plus/icons-vue'
-import request from '../utils/request'
+import request, { BASE_URL } from '../utils/request'
 
 const dateRange = ref(null)
 const productStats = ref([])

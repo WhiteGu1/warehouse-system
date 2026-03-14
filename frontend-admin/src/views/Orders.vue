@@ -11,73 +11,109 @@
         </div>
       </template>
 
-      <div style="display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap">
-        <el-select v-model="filterStatus" placeholder="筛选状态" clearable style="width:150px" @change="loadOrders">
-          <el-option label="待确认" :value="1" />
-          <el-option label="已确认待配货" :value="2" />
-          <el-option label="已配货待发货" :value="3" />
-          <el-option label="已发货待付款" :value="4" />
-          <el-option label="已付款完成" :value="5" />
-          <el-option label="已取消" :value="6" />
-          <el-option label="已退款" :value="7" />
-        </el-select>
-        <el-select v-model="filterCustomer" placeholder="筛选客户" clearable style="width:160px" @change="loadOrders">
-          <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
-        </el-select>
-        <el-date-picker
-          v-model="filterDateRange"
-          type="daterange"
-          range-separator="至"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          style="width:240px"
-          @change="loadOrders"
-        />
-      </div>
+<!-- 筛选栏 -->
+<div style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap">
+  <el-select v-model="filterStatus" placeholder="筛选状态" clearable style="flex:1;min-width:130px" @change="loadOrders">
+    <el-option label="待确认" :value="1" />
+    <el-option label="已确认待配货" :value="2" />
+    <el-option label="已配货待发货" :value="3" />
+    <el-option label="已发货待付款" :value="4" />
+    <el-option label="已付款完成" :value="5" />
+    <el-option label="已取消" :value="6" />
+    <el-option label="已退款" :value="7" />
+  </el-select>
+  <el-select v-model="filterCustomer" placeholder="筛选客户" clearable style="flex:1;min-width:130px" @change="loadOrders">
+    <el-option v-for="c in customers" :key="c.id" :label="c.name" :value="c.id" />
+  </el-select>
+  <el-date-picker
+    v-model="filterDateRange"
+    type="daterange"
+    range-separator="至"
+    start-placeholder="开始日期"
+    end-placeholder="结束日期"
+    style="flex:1;min-width:220px"
+    @change="loadOrders"
+  />
+</div>
 
-      <el-table
-        :data="orders" stripe v-loading="loading" style="width:100%"
-        row-style="cursor:pointer"
-        @row-click="viewDetail"
-      >
-        <el-table-column prop="order_no" label="订单号" min-width="165" />
-        <el-table-column prop="supermarket_name" label="客户" min-width="100" />
-        <el-table-column label="金额" min-width="110">
-          <template #default="{ row }">
-            <span style="color:#409eff;font-weight:bold;white-space:nowrap">${{ row.total_amount }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" min-width="120">
-          <template #default="{ row }">
-            <el-tag :type="statusType(row.status)" style="white-space:nowrap">{{ row.status_text }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="tracking_number" label="物流单号" min-width="120" show-overflow-tooltip />
-        <el-table-column prop="created_at" label="下单时间" min-width="155" />
-        <el-table-column label="操作" min-width="180" fixed="right">
-          <template #default="{ row }">
-            <div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap" @click.stop>
-              <el-button size="small" type="success" @click="printInvoice(row)">打印</el-button>
-              <el-button size="small" type="primary" @click="openUpdateStatus(row)" v-if="row.status >= 1 && row.status <= 4">更新状态</el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <el-pagination
-          v-model:current-page="currentPage"
-          :page-size="pageSize"
-          :total="total"
-          layout="total, prev, pager, next, jumper"
-          background
-          @current-change="fetchOrders"
-        />
-        <div style="font-size:13px;color:#888">
-          共 <b>{{ summaryCount }}</b> 笔订单，合计
-          <span style="color:#409eff;font-weight:bold;font-size:15px">${{ summaryTotal.toFixed(2) }}</span>
-        </div>
+<!-- PC端表格 -->
+<el-table :data="orders" stripe v-loading="loading" style="width:100%" class="desktop-table">
+  <el-table-column prop="order_no" label="订单号" min-width="165" />
+  <el-table-column prop="supermarket_name" label="客户" min-width="100" />
+  <el-table-column label="金额" min-width="110">
+    <template #default="{ row }">
+      <span style="color:#409eff;font-weight:bold;white-space:nowrap">${{ row.total_amount }}</span>
+    </template>
+  </el-table-column>
+  <el-table-column label="状态" min-width="120">
+    <template #default="{ row }">
+      <el-tag :type="statusType(row.status)" style="white-space:nowrap">{{ row.status_text }}</el-tag>
+    </template>
+  </el-table-column>
+  <el-table-column prop="tracking_number" label="物流单号" min-width="120" show-overflow-tooltip />
+  <el-table-column prop="created_at" label="下单时间" min-width="155" />
+  <el-table-column label="操作" min-width="240" fixed="right">
+    <template #default="{ row }">
+      <div style="display:flex;gap:4px;align-items:center">
+        <el-button size="small" @click="viewDetail(row)">详情</el-button>
+        <el-button size="small" type="success" @click="printInvoice(row)">打印</el-button>
+        <el-button size="small" type="primary" @click="openUpdateStatus(row)" v-if="row.status >= 1 && row.status <= 4">更新状态</el-button>
       </div>
+    </template>
+  </el-table-column>
+</el-table>
+
+<!-- 手机端卡片列表 -->
+<div class="mobile-list" v-loading="loading">
+  <div
+    v-for="row in orders" :key="row.id"
+    style="border:1px solid #e4e7ed;border-radius:8px;padding:12px;margin-bottom:10px;background:#fff;cursor:pointer"
+    @click="viewDetail(row)"
+  >
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+      <div style="font-size:13px;color:#666;flex:1;margin-right:8px;word-break:break-all">{{ row.order_no }}</div>
+      <el-tag :type="statusType(row.status)" size="small" style="flex-shrink:0">{{ row.status_text }}</el-tag>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span style="font-size:14px;font-weight:bold">{{ row.supermarket_name }}</span>
+      <span style="color:#409eff;font-weight:bold;font-size:16px">${{ row.total_amount }}</span>
+    </div>
+    <div style="font-size:12px;color:#888;margin-bottom:8px">{{ row.created_at }}</div>
+    <div v-if="row.tracking_number" style="font-size:12px;color:#666;margin-bottom:8px">物流：{{ row.tracking_number }}</div>
+    <div style="display:flex;gap:6px" @click.stop>
+      <el-button size="small" type="success" @click="printInvoice(row)">打印</el-button>
+      <el-button size="small" type="primary" @click="openUpdateStatus(row)" v-if="row.status >= 1 && row.status <= 4">更新状态</el-button>
+    </div>
+  </div>
+  <div v-if="orders.length === 0 && !loading" style="text-align:center;color:#aaa;padding:40px 0">暂无订单</div>
+</div>
+
+<div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+  <el-pagination
+    v-model:current-page="currentPage"
+    :page-size="pageSize"
+    :total="total"
+    layout="prev, pager, next"
+    background
+    @current-change="fetchOrders"
+    class="mobile-pagination"
+  />
+  <el-pagination
+    v-model:current-page="currentPage"
+    :page-size="pageSize"
+    :total="total"
+    layout="total, prev, pager, next, jumper"
+    background
+    @current-change="fetchOrders"
+    class="desktop-pagination"
+  />
+  <div style="font-size:13px;color:#888">
+    共 <b>{{ summaryCount }}</b> 笔订单，合计
+    <span style="color:#409eff;font-weight:bold;font-size:15px">${{ summaryTotal.toFixed(2) }}</span>
+  </div>
+</div>
+
+
     </el-card>
 
     <!-- 导出弹窗 -->
@@ -438,10 +474,7 @@ const fetchOrders = async () => {
 }
 
 const loadCustomers = async () => { customers.value = await request.get('/customers/') }
-const loadProducts = async () => {
-  const res = await request.get('/products/', { params: { page: 1, page_size: 99999 } })
-  products.value = res.items || []
-}
+const loadProducts = async () => { products.value = await request.get('/products/') }
 
 const onCustomerChange = (id) => {
   const c = customers.value.find(x => x.id === id)
@@ -640,3 +673,16 @@ onMounted(() => {
   loadProducts()
 })
 </script>
+
+<style scoped>
+.mobile-list { display: none; }
+.mobile-pagination { display: none; }
+.desktop-pagination { display: flex; }
+
+@media (max-width: 768px) {
+  .desktop-table { display: none; }
+  .mobile-list { display: block; }
+  .mobile-pagination { display: flex; }
+  .desktop-pagination { display: none; }
+}
+</style>

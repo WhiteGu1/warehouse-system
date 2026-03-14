@@ -15,46 +15,44 @@
       </template>
     </el-alert>
 
-    <el-row :gutter="20" style="margin-bottom:24px">
-      <el-col :xs="12" :sm="6">
-        <el-card shadow="hover" style="cursor:pointer" @click="$router.push('/products')">
-          <div style="text-align:center">
-            <div style="font-size:32px;color:#409eff;font-weight:bold">{{ stats.products }}</div>
-            <div style="color:#666;margin-top:8px">商品总数</div>
-            <div style="color:#aaa;font-size:12px;margin-top:4px">点击进入商品管理</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="12" :sm="6">
-        <el-card shadow="hover" style="cursor:pointer" @click="$router.push('/customers')">
-          <div style="text-align:center">
-            <div style="font-size:32px;color:#67c23a;font-weight:bold">{{ stats.supermarkets }}</div>
-            <div style="color:#666;margin-top:8px">客户数量</div>
-            <div style="color:#aaa;font-size:12px;margin-top:4px">点击进入客户管理</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="12" :sm="6">
-        <el-row :gutter="20" style="margin-bottom:24px;row-gap:16px"></el-row>
-        <el-card shadow="hover" style="cursor:pointer" @click="pendingOrderDialogVisible = true">
-          <div style="text-align:center">
-            <div style="font-size:32px;color:#e6a23c;font-weight:bold">{{ stats.pending_orders }}</div>
-            <div style="color:#666;margin-top:8px">待处理订单</div>
-            <div style="color:#aaa;font-size:12px;margin-top:4px">点击查看详情</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="12" :sm="6">
-        <el-row :gutter="20" style="margin-bottom:24px;row-gap:16px"></el-row>
-        <el-card shadow="hover" style="cursor:pointer" @click="lowStockDialogVisible = true">
-          <div style="text-align:center">
-            <div style="font-size:32px;color:#f56c6c;font-weight:bold">{{ stats.low_stock }}</div>
-            <div style="color:#666;margin-top:8px">库存不足</div>
-            <div style="color:#aaa;font-size:12px;margin-top:4px">点击查看详情</div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+<el-row :gutter="20" style="margin-bottom:24px;row-gap:16px">
+  <el-col :xs="12" :sm="6">
+    <el-card shadow="hover" style="cursor:pointer" @click="$router.push('/products')">
+      <div style="text-align:center">
+        <div style="font-size:32px;color:#409eff;font-weight:bold">{{ stats.products }}</div>
+        <div style="color:#666;margin-top:8px">商品总数</div>
+        <div style="color:#aaa;font-size:12px;margin-top:4px">点击进入商品管理</div>
+      </div>
+    </el-card>
+  </el-col>
+  <el-col :xs="12" :sm="6">
+    <el-card shadow="hover" style="cursor:pointer" @click="$router.push('/customers')">
+      <div style="text-align:center">
+        <div style="font-size:32px;color:#67c23a;font-weight:bold">{{ stats.supermarkets }}</div>
+        <div style="color:#666;margin-top:8px">客户数量</div>
+        <div style="color:#aaa;font-size:12px;margin-top:4px">点击进入客户管理</div>
+      </div>
+    </el-card>
+  </el-col>
+  <el-col :xs="12" :sm="6">
+    <el-card shadow="hover" style="cursor:pointer" @click="pendingOrderDialogVisible = true">
+      <div style="text-align:center">
+        <div style="font-size:32px;color:#e6a23c;font-weight:bold">{{ stats.pending_orders }}</div>
+        <div style="color:#666;margin-top:8px">待处理订单</div>
+        <div style="color:#aaa;font-size:12px;margin-top:4px">点击查看详情</div>
+      </div>
+    </el-card>
+  </el-col>
+  <el-col :xs="12" :sm="6">
+    <el-card shadow="hover" style="cursor:pointer" @click="lowStockDialogVisible = true">
+      <div style="text-align:center">
+        <div style="font-size:32px;color:#f56c6c;font-weight:bold">{{ stats.low_stock }}</div>
+        <div style="color:#666;margin-top:8px">库存不足</div>
+        <div style="color:#aaa;font-size:12px;margin-top:4px">点击查看详情</div>
+      </div>
+    </el-card>
+  </el-col>
+</el-row>
 
     <!-- 未完成订单 -->
     <el-card>
